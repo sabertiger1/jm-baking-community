@@ -17,12 +17,14 @@ from .._model_base import BaseMixins, SqlAlchemyBase
 from .user_to_recipe import UserToRecipe
 
 if TYPE_CHECKING:
+    from ..baking import RecipeRating, UserBakingRecord, UserClass, UserPoints, WorkVote
     from ..group import Group
     from ..household import Household
     from ..household.mealplan import GroupMealPlan
     from ..household.shopping_list import ShoppingList
     from ..recipe import RecipeComment, RecipeModel, RecipeTimelineEvent
     from .password_reset import PasswordResetModel
+    from .user_details import UserDetails
 
 
 class LongLiveToken(SqlAlchemyBase, BaseMixins):
@@ -48,6 +50,13 @@ class AuthMethod(enum.Enum):
     OIDC = "OIDC"
 
 
+class UserRole(enum.Enum):
+    """用户角色枚举"""
+    STUDENT = "student"  # 学生
+    TEACHER = "teacher"  # 老师
+    ADMIN = "admin"  # 管理员
+
+
 class User(SqlAlchemyBase, BaseMixins):
     __tablename__ = "users"
     id: Mapped[GUID] = mapped_column(GUID, primary_key=True, default=GUID.generate)
@@ -58,6 +67,7 @@ class User(SqlAlchemyBase, BaseMixins):
     auth_method: Mapped[Enum[AuthMethod]] = mapped_column(Enum(AuthMethod), default=AuthMethod.MEALIE)
     admin: Mapped[bool | None] = mapped_column(Boolean, default=False)
     advanced: Mapped[bool | None] = mapped_column(Boolean, default=False)
+    role: Mapped[Enum[UserRole] | None] = mapped_column(Enum(UserRole), default=UserRole.STUDENT, nullable=True, index=True)  # 用户角色：学生/老师/管理员
 
     group_id: Mapped[GUID] = mapped_column(GUID, ForeignKey("groups.id"), nullable=False, index=True)
     group: Mapped["Group"] = orm.relationship("Group", back_populates="users")
@@ -106,6 +116,27 @@ class User(SqlAlchemyBase, BaseMixins):
         back_populates="favorited_by",
         overlaps="recipe,rated_by,rated_recipes",
     )
+    
+    # Baking Community Relationships
+    recipe_ratings: Mapped[list["RecipeRating"]] = orm.relationship(
+        "RecipeRating", back_populates="user", cascade="all, delete, delete-orphan", foreign_keys="RecipeRating.user_id"
+    )
+    baking_records: Mapped[list["UserBakingRecord"]] = orm.relationship(
+        "UserBakingRecord", back_populates="user", cascade="all, delete, delete-orphan", foreign_keys="UserBakingRecord.user_id"
+    )
+    work_votes: Mapped[list["WorkVote"]] = orm.relationship(
+        "WorkVote", back_populates="user", cascade="all, delete, delete-orphan", foreign_keys="WorkVote.user_id"
+    )
+    points: Mapped["UserPoints"] = orm.relationship(
+        "UserPoints", back_populates="user", uselist=False, cascade="all, delete, delete-orphan", foreign_keys="UserPoints.user_id"
+    )
+    user_class: Mapped["UserClass"] = orm.relationship(
+        "UserClass", back_populates="user", uselist=False, cascade="all, delete, delete-orphan", foreign_keys="UserClass.user_id"
+    )
+    user_details: Mapped["UserDetails"] = orm.relationship(
+        "UserDetails", back_populates="user", uselist=False, cascade="all, delete, delete-orphan", foreign_keys="UserDetails.user_id"
+    )
+    
     model_config = ConfigDict(
         exclude={
             "password",

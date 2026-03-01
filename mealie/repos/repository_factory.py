@@ -34,8 +34,17 @@ from mealie.db.models.recipe.recipe_timeline import RecipeTimelineEvent
 from mealie.db.models.recipe.shared import RecipeShareTokenModel
 from mealie.db.models.recipe.tag import Tag
 from mealie.db.models.recipe.tool import Tool
+from mealie.db.models.baking import (
+    RecipeRating,
+    UserBakingRecord,
+    UserClass,
+    UserPoints,
+    WorkVote,
+    VoteType,
+)
 from mealie.db.models.users import LongLiveToken, User
 from mealie.db.models.users.password_reset import PasswordResetModel
+from mealie.db.models.users.user_details import UserDetails
 from mealie.db.models.users.user_to_recipe import UserToRecipe
 from mealie.repos.repository_cookbooks import RepositoryCookbooks
 from mealie.repos.repository_foods import RepositoryFood
@@ -67,8 +76,16 @@ from mealie.schema.recipe.recipe_ingredient import IngredientFood, IngredientUni
 from mealie.schema.recipe.recipe_share_token import RecipeShareToken
 from mealie.schema.recipe.recipe_timeline_events import RecipeTimelineEventOut
 from mealie.schema.reports.reports import ReportEntryOut, ReportOut
+from mealie.schema.baking import (
+    BakingRecordOut,
+    RecipeRatingOut,
+    UserClassOut,
+    UserPoints as UserPointsOut,
+    WorkVoteOut,
+)
 from mealie.schema.user import GroupInDB, LongLiveTokenInDB, PrivateUser
 from mealie.schema.user.user import UserRatingOut
+from mealie.schema.user.user_details import UserDetailsOut
 from mealie.schema.user.user_passwords import PrivatePasswordResetToken
 
 from ._utils import NOT_SET, NotSet
@@ -84,6 +101,7 @@ PK_SLUG = "slug"
 PK_TOKEN = "token"
 PK_GROUP_ID = "group_id"
 PK_HOUSEHOLD_ID = "household_id"
+PK_USER_ID = "user_id"
 
 
 class RepositoryCategories(GroupRepositoryGeneric[CategoryOut, Category]):
@@ -381,4 +399,43 @@ class AllRepositories:
     def webhooks(self) -> HouseholdRepositoryGeneric[ReadWebhook, GroupWebhooksModel]:
         return HouseholdRepositoryGeneric(
             self.session, PK_ID, GroupWebhooksModel, ReadWebhook, group_id=self.group_id, household_id=self.household_id
+        )
+
+    # ================================================================
+    # Baking Community
+
+    @cached_property
+    def baking_records(self) -> GroupRepositoryGeneric[BakingRecordOut, UserBakingRecord]:
+        return GroupRepositoryGeneric(
+            self.session, PK_ID, UserBakingRecord, BakingRecordOut, group_id=self.group_id
+        )
+
+    @cached_property
+    def recipe_ratings(self) -> GroupRepositoryGeneric[RecipeRatingOut, RecipeRating]:
+        return GroupRepositoryGeneric(
+            self.session, PK_ID, RecipeRating, RecipeRatingOut, group_id=self.group_id
+        )
+
+    @cached_property
+    def user_points(self) -> GroupRepositoryGeneric[UserPointsOut, UserPoints]:
+        return GroupRepositoryGeneric(
+            self.session, PK_USER_ID, UserPoints, UserPointsOut, group_id=self.group_id
+        )
+
+    @cached_property
+    def work_votes(self) -> GroupRepositoryGeneric[WorkVoteOut, WorkVote]:
+        return GroupRepositoryGeneric(
+            self.session, PK_ID, WorkVote, WorkVoteOut, group_id=self.group_id
+        )
+
+    @cached_property
+    def user_classes(self) -> GroupRepositoryGeneric[UserClassOut, UserClass]:
+        return GroupRepositoryGeneric(
+            self.session, PK_USER_ID, UserClass, UserClassOut, group_id=self.group_id
+        )
+
+    @cached_property
+    def user_details(self) -> GroupRepositoryGeneric[UserDetailsOut, UserDetails]:
+        return GroupRepositoryGeneric(
+            self.session, PK_USER_ID, UserDetails, UserDetailsOut, group_id=self.group_id
         )

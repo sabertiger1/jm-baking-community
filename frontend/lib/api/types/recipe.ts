@@ -222,6 +222,8 @@ export interface RecipeIngredient {
   referenceId?: string;
 }
 export interface Recipe {
+  makingVideoUrl?: string | null;
+  keyPointsVideoUrl?: string | null;
   id?: string | null;
   userId?: string;
   householdId?: string;
@@ -329,6 +331,8 @@ export interface RecipeSummary {
   createdAt?: string | null;
   updatedAt?: string | null;
   lastMade?: string | null;
+  makingVideoUrl?: string | null;
+  keyPointsVideoUrl?: string | null;
 }
 export interface RecipeCommentCreate {
   recipeId: string;

@@ -4,6 +4,7 @@ from . import (
     admin,
     app,
     auth,
+    baking,
     comments,
     explore,
     groups,
@@ -33,3 +34,4 @@ router.include_router(unit_and_foods.router)
 router.include_router(admin.router)
 router.include_router(validators.router)
 router.include_router(explore.router)
+router.include_router(baking.router)

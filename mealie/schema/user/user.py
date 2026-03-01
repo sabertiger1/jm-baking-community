@@ -11,7 +11,7 @@ from mealie.core.config import get_app_dirs, get_app_settings
 from mealie.db.models.recipe.recipe import RecipeModel
 from mealie.db.models.users import User
 from mealie.db.models.users.user_to_recipe import UserToRecipe
-from mealie.db.models.users.users import AuthMethod, LongLiveToken
+from mealie.db.models.users.users import AuthMethod, LongLiveToken, UserRole
 from mealie.schema._mealie import MealieModel
 from mealie.schema.group.group_preferences import ReadGroupPreferences
 from mealie.schema.household.webhook import CreateWebhook, ReadWebhook
@@ -120,6 +120,7 @@ class UserBase(MealieModel):
     can_manage: bool = False
     can_manage_household: bool = False
     can_organize: bool = False
+    role: UserRole | None = Field(None, description="用户角色：学生/老师/管理员")
     model_config = ConfigDict(
         from_attributes=True,
         json_schema_extra={

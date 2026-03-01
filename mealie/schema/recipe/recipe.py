@@ -139,6 +139,10 @@ class RecipeSummary(MealieModel):
     tools: list[RecipeTool] = []
     rating: float | None = None
     org_url: str | None = Field(None, alias="orgURL")
+    
+    # Baking Community Features
+    making_video_url: str | None = Field(None, alias="makingVideoUrl", description="制作视频URL")
+    key_points_video_url: str | None = Field(None, alias="keyPointsVideoUrl", description="要点视频URL")
 
     date_added: datetime.date | None = None
     date_updated: datetime.datetime | None = None
@@ -146,7 +150,7 @@ class RecipeSummary(MealieModel):
     created_at: datetime.datetime | None = None
     updated_at: datetime.datetime | None = UpdatedAtField(None)
     last_made: datetime.datetime | None = None
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     @field_validator("recipe_servings", "recipe_yield_quantity", mode="before")
     def clean_numbers(val: Any):
@@ -191,6 +195,10 @@ class Recipe(RecipeSummary):
     extras: dict | None = {}
 
     comments: list[RecipeCommentOut] | None = []
+    
+    # Baking Community Features
+    making_video_url: str | None = Field(None, alias="makingVideoUrl", description="制作视频URL")
+    key_points_video_url: str | None = Field(None, alias="keyPointsVideoUrl", description="要点视频URL")
 
     @staticmethod
     def _get_dir(dir: Path) -> Path:

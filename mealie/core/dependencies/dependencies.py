@@ -138,6 +138,47 @@ async def get_admin_user(current_user: PrivateUser = Depends(get_current_user)) 
     return current_user
 
 
+async def require_complete_profile(
+    current_user: PrivateUser = Depends(get_current_user),
+    session: Session = Depends(generate_session),
+) -> PrivateUser:
+    """检查用户资料是否完善，未完善则抛出异常（用于限制功能）"""
+    repos = get_repositories(session, group_id=current_user.group_id, household_id=current_user.household_id)
+    
+    # 检查用户是否有详细资料
+    from mealie.db.models.users.user_details import UserDetails
+    from sqlalchemy import select
+    
+    user_details = session.execute(
+        select(UserDetails).filter(UserDetails.user_id == current_user.id)
+    ).scalar_one_or_none()
+    
+    if not user_details or not user_details.is_complete:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "error": "profile_incomplete",
+                "message": "请先完善个人资料（真实姓名、年级、班级、头像）才能使用此功能",
+                "missing_fields": (
+                    []
+                    if not user_details
+                    else [
+                        field
+                        for field, value in [
+                            ("real_name", user_details.real_name),
+                            ("grade", user_details.grade),
+                            ("class_name", user_details.class_name),
+                            ("avatar_url", user_details.avatar_url),
+                        ]
+                        if not value
+                    ]
+                ),
+            },
+        )
+    
+    return current_user
+
+
 def validate_long_live_token(session: Session, client_token: str, user_id: str) -> PrivateUser:
     repos = get_repositories(session, group_id=None, household_id=None)
 

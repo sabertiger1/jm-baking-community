@@ -7,6 +7,7 @@
 
 export type WebhookType = "mealplan";
 export type AuthMethod = "Mealie" | "LDAP" | "OIDC";
+export type UserRole = "student" | "teacher" | "admin";
 
 export interface ChangePassword {
   currentPassword?: string;
@@ -135,6 +136,7 @@ export interface PrivateUser {
   password: string;
   loginAttemps?: number;
   lockedAt?: string | null;
+  role?: UserRole;
 }
 export interface LongLiveTokenOut {
   name: string;

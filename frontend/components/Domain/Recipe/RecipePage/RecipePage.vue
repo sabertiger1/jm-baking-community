@@ -101,6 +101,11 @@
         </v-card-text>
       </v-card>
       <WakelockSwitch />
+      <RecipeBakingSection
+        v-if="!isEditForm && !isCookMode"
+        :recipe="recipe"
+        class="px-1 my-4 d-print-none"
+      />
       <RecipePageComments
         v-if="!recipe.settings?.disableComments && !isEditForm && !isCookMode"
         v-model="recipe"
@@ -201,6 +206,7 @@ import RecipePageParseDialog from "./RecipePageParts/RecipePageParseDialog.vue";
 import RecipePageScale from "./RecipePageParts/RecipePageScale.vue";
 import RecipePageInfoEditor from "./RecipePageParts/RecipePageInfoEditor.vue";
 import RecipePageComments from "./RecipePageParts/RecipePageComments.vue";
+import RecipeBakingSection from "~/components/Domain/Baking/RecipeBakingSection.vue";
 import RecipePrintContainer from "~/components/Domain/Recipe/RecipePrintContainer.vue";
 import {
   clearPageState,

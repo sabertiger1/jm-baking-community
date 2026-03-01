@@ -8,13 +8,17 @@
     class="d-print-none"
   >
     <slot />
-    <router-link :to="routerLink">
-      <v-btn
-        icon
-        color="white"
+    <router-link :to="routerLink" class="d-flex align-center">
+      <v-avatar
+        size="40"
+        class="mr-2"
       >
-        <v-icon size="40"> {{ $globals.icons.primary }} </v-icon>
-      </v-btn>
+        <v-img
+          src="/LOGO.png"
+          alt="经贸烘焙社区"
+          cover
+        />
+      </v-avatar>
     </router-link>
 
     <div
@@ -25,7 +29,7 @@
         style="cursor: pointer"
         @click="$router.push(routerLink)"
       >
-        Mealie
+        经贸烘焙社区
       </v-toolbar-title>
     </div>
     <RecipeDialogSearch ref="domSearchDialog" />

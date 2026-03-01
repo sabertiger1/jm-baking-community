@@ -11,6 +11,13 @@ import type {
   UserRatingOut,
   UserRatingSummary,
 } from "~/lib/api/types/user";
+import type {
+  UserDetails,
+  UserDetailsPublic,
+  UserDetailsCompleteCheck,
+  CompleteProfileRequest,
+  UserDetailsUpdate,
+} from "./user-details";
 
 export interface UserRatingsSummaries {
   ratings: UserRatingSummary[];
@@ -41,6 +48,13 @@ const routes = {
 
   usersApiTokens: `${prefix}/users/api-tokens`,
   usersApiTokensTokenId: (token_id: string | number) => `${prefix}/users/api-tokens/${token_id}`,
+  
+  // User Details
+  userDetailsMe: `${prefix}/users/me/details`,
+  userDetailsMeComplete: `${prefix}/users/me/details/complete`,
+  userDetailsMeCheck: `${prefix}/users/me/details/check`,
+  userDetailsPublic: (user_id: string) => `${prefix}/users/${user_id}/details/public`,
+  userDetailsAdmin: (user_id: string) => `${prefix}/users/${user_id}/details`,
 };
 
 export class UserApi extends BaseCRUDAPI<UserIn, UserOut, UserBase> {
@@ -94,5 +108,30 @@ export class UserApi extends BaseCRUDAPI<UserIn, UserOut, UserBase> {
 
   async resetPassword(payload: ResetPassword) {
     return await this.requests.post(routes.passwordReset, payload);
+  }
+
+  // User Details Methods
+  async getUserDetails() {
+    return await this.requests.get<UserDetails | null>(routes.userDetailsMe);
+  }
+
+  async completeProfile(data: CompleteProfileRequest) {
+    return await this.requests.post<UserDetails>(routes.userDetailsMeComplete, data);
+  }
+
+  async updateUserDetails(data: UserDetailsUpdate) {
+    return await this.requests.put<UserDetails>(routes.userDetailsMe, data);
+  }
+
+  async getUserDetailsCheck() {
+    return await this.requests.get<UserDetailsCompleteCheck>(routes.userDetailsMeCheck);
+  }
+
+  async getUserDetailsPublic(userId: string) {
+    return await this.requests.get<UserDetailsPublic>(routes.userDetailsPublic(userId));
+  }
+
+  async getUserDetailsAdmin(userId: string) {
+    return await this.requests.get<UserDetails>(routes.userDetailsAdmin(userId));
   }
 }

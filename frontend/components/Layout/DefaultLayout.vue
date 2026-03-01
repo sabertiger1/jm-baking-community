@@ -91,6 +91,13 @@
         </div>
       </v-scroll-x-transition>
     </v-main>
+    
+    <!-- 资料完善弹窗 -->
+    <ProfileCompleteDialog
+      v-model="profileComplete.showDialog.value"
+      :check-result="profileComplete.checkResult.value"
+      @completed="profileComplete.refresh()"
+    />
   </v-app>
 </template>
 
@@ -100,6 +107,8 @@ import type { SideBarLink } from "~/types/application-types";
 import { useCookbookPreferences } from "~/composables/use-users/preferences";
 import { useCookbookStore, usePublicCookbookStore } from "~/composables/store/use-cookbook-store";
 import type { ReadCookBook } from "~/lib/api/types/cookbook";
+import ProfileCompleteDialog from "~/components/Domain/Baking/ProfileCompleteDialog.vue";
+import { useProfileComplete } from "~/composables/use-profile-complete";
 
 export default defineNuxtComponent({
   setup() {
@@ -229,8 +238,28 @@ export default defineNuxtComponent({
       {
         icon: $globals.icons.silverwareForkKnife,
         to: `/g/${groupSlug.value}`,
-        title: i18n.t("general.recipes"),
+        title: "烘焙社区",
         restricted: false,
+        children: [
+          {
+            icon: $globals.icons.silverwareForkKnife,
+            to: `/g/${groupSlug.value}`,
+            title: "配方列表",
+            restricted: false,
+          },
+          {
+            icon: $globals.icons.search,
+            to: `/g/${groupSlug.value}/recipes/finder`,
+            title: i18n.t("recipe-finder.recipe-finder"),
+            restricted: false,
+          },
+        ],
+      },
+      {
+        icon: $globals.icons.account,
+        to: "/baking/profile",
+        title: "个人主页",
+        restricted: true,
       },
       {
         icon: $globals.icons.search,
@@ -289,6 +318,15 @@ export default defineNuxtComponent({
       },
     ]);
 
+    const profileComplete = useProfileComplete();
+    
+    // 检查用户是否可以创建配方（学生不能创建）
+    const canCreateRecipe = computed(() => {
+      if (!auth.user.value) return false;
+      // 如果用户是学生，不能创建配方
+      return auth.user.value.role !== "student";
+    });
+    
     return {
       groupSlug,
       cookbookLinks,
@@ -297,6 +335,8 @@ export default defineNuxtComponent({
       isOwnGroup,
       languageDialog,
       sidebar,
+      profileComplete,
+      canCreateRecipe,
     };
   },
 });

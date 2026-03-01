@@ -36,7 +36,7 @@ def get_locale_context() -> tuple[Translator, LocaleConfig] | None:
 def _load_factory() -> i18n.ProviderFactory:
     return i18n.ProviderFactory(
         directory=TRANSLATIONS,
-        fallback_locale="en-US",
+        fallback_locale="zh-CN",
     )
 
 

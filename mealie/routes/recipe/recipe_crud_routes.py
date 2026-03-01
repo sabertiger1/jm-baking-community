@@ -133,6 +133,13 @@ class RecipeController(BaseRecipeController):
     @router.post("/create/html-or-json", status_code=201)
     async def create_recipe_from_html_or_json(self, req: ScrapeRecipeData):
         """Takes in raw HTML or a https://schema.org/Recipe object as a JSON string and parses it like a URL"""
+        # 检查用户角色：学生不能创建配方
+        from mealie.db.models.users.users import UserRole
+        if self.user.role == UserRole.STUDENT:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="学生身份不能创建配方，只能查看、评论和上传作品"
+            )
 
         if req.data.startswith("{"):
             req.data = RecipeScraperPackage.ld_json_to_html(req.data)
@@ -142,7 +149,14 @@ class RecipeController(BaseRecipeController):
     @router.post("/create/url", status_code=201, response_model=str)
     async def parse_recipe_url(self, req: ScrapeRecipe):
         """Takes in a URL and attempts to scrape data and load it into the database"""
-
+        # 检查用户角色：学生不能创建配方
+        from mealie.db.models.users.users import UserRole
+        if self.user.role == UserRole.STUDENT:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="学生身份不能创建配方，只能查看、评论和上传作品"
+            )
+        
         return await self._create_recipe_from_web(req)
 
     async def _create_recipe_from_web(self, req: ScrapeRecipe | ScrapeRecipeData):
@@ -209,6 +223,14 @@ class RecipeController(BaseRecipeController):
     @router.post("/create/zip", status_code=201)
     def create_recipe_from_zip(self, archive: UploadFile = File(...)):
         """Create recipe from archive"""
+        # 检查用户角色：学生不能创建配方
+        from mealie.db.models.users.users import UserRole
+        if self.user.role == UserRole.STUDENT:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="学生身份不能创建配方，只能查看、评论和上传作品"
+            )
+        
         with get_temporary_zip_path() as temp_path:
             recipe = self.service.create_from_zip(archive, temp_path)
             self.publish_event(
@@ -230,6 +252,13 @@ class RecipeController(BaseRecipeController):
         Create a recipe from an image using OpenAI.
         Optionally specify a language for it to translate the recipe to.
         """
+        # 检查用户角色：学生不能创建配方
+        from mealie.db.models.users.users import UserRole
+        if self.user.role == UserRole.STUDENT:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="学生身份不能创建配方，只能查看、评论和上传作品"
+            )
 
         if not (self.settings.OPENAI_ENABLED and self.settings.OPENAI_ENABLE_IMAGE_SERVICES):
             raise HTTPException(
@@ -339,6 +368,14 @@ class RecipeController(BaseRecipeController):
     @router.post("", status_code=201, response_model=str)
     def create_one(self, data: CreateRecipe) -> str | None:
         """Takes in a JSON string and loads data into the database as a new entry"""
+        # 检查用户角色：学生不能创建配方
+        from mealie.db.models.users.users import UserRole
+        if self.user.role == UserRole.STUDENT:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="学生身份不能创建配方，只能查看、评论和上传作品"
+            )
+        
         try:
             new_recipe = self.service.create_one(data)
         except Exception as e:
@@ -363,6 +400,14 @@ class RecipeController(BaseRecipeController):
     @router.post("/{slug}/duplicate", status_code=201, response_model=Recipe)
     def duplicate_one(self, slug: str, req: RecipeDuplicate) -> Recipe:
         """Duplicates a recipe with a new custom name if given"""
+        # 检查用户角色：学生不能创建配方
+        from mealie.db.models.users.users import UserRole
+        if self.user.role == UserRole.STUDENT:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="学生身份不能创建配方，只能查看、评论和上传作品"
+            )
+        
         try:
             new_recipe = self.service.duplicate_one(slug, req)
         except Exception as e:

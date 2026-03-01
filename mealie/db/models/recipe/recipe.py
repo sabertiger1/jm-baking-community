@@ -33,6 +33,7 @@ from .tag import recipes_to_tags
 from .tool import recipes_to_tools
 
 if TYPE_CHECKING:
+    from ..baking import RecipeRating, UserBakingRecord
     from ..group import Group, GroupMealPlan
     from ..household import Household, ShoppingListItemRecipeReference, ShoppingListRecipeReference
     from ..users import User
@@ -181,6 +182,18 @@ class RecipeModel(SqlAlchemyBase, BaseMixins):
     # Deprecated
     recipeCuisine: Mapped[str | None] = mapped_column(sa.String)
     is_ocr_recipe: Mapped[bool | None] = mapped_column(sa.Boolean, default=False)
+    
+    # Baking Community Features
+    making_video_url: Mapped[str | None] = mapped_column(sa.String)  # 制作视频URL
+    key_points_video_url: Mapped[str | None] = mapped_column(sa.String)  # 要点视频URL
+    
+    # Baking Community Relationships
+    ratings: Mapped[list["RecipeRating"]] = orm.relationship(
+        "RecipeRating", back_populates="recipe", cascade="all, delete, delete-orphan"
+    )
+    baking_records: Mapped[list["UserBakingRecord"]] = orm.relationship(
+        "UserBakingRecord", back_populates="recipe", cascade="all, delete, delete-orphan"
+    )
 
     @validates("name")
     def validate_name(self, _, name):

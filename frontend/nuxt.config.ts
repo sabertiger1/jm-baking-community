@@ -197,11 +197,11 @@ export default defineNuxtConfig({
     lazy: true,
     types: "composition",
     langDir: "./../lang/locales", // note: we need to up one ../ because the default root of lang dir is the /frontend/i18n, which can not be configured
-    defaultLocale: "en-US",
+    defaultLocale: "zh-CN",
     detectBrowserLanguage: {
       useCookie: true,
       alwaysRedirect: true,
-      fallbackLocale: "en-US",
+      fallbackLocale: "zh-CN",
     },
     compilation: {
       strictMessage: false,

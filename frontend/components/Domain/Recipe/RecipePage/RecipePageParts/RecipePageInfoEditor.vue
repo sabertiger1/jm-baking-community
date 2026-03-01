@@ -76,6 +76,27 @@
       density="compact"
       variant="underlined"
     />
+    
+    <!-- 视频URL字段 -->
+    <v-divider class="my-4" />
+    <div class="text-subtitle-2 mb-2">制作视频</div>
+    <v-text-field
+      v-model="recipe.makingVideoUrl"
+      label="制作过程视频URL"
+      density="compact"
+      variant="underlined"
+      hint="输入视频的完整URL地址"
+      persistent-hint
+    />
+    <v-text-field
+      v-model="recipe.keyPointsVideoUrl"
+      label="制作要点视频URL"
+      density="compact"
+      variant="underlined"
+      hint="输入视频的完整URL地址"
+      persistent-hint
+      class="mt-2"
+    />
   </div>
 </template>
 

@@ -91,10 +91,10 @@ const datetimeFormats = {
 export default defineI18nConfig(() => {
   return {
     legacy: false,
-    locale: "en-US",
+    locale: "zh-CN",
     availableLocales: Object.keys(datetimeFormats),
     datetimeFormats: datetimeFormats as any,
-    fallbackLocale: "en-US",
+    fallbackLocale: "zh-CN",
     fallbackWarn: true,
   };
 });
