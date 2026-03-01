@@ -1,106 +1,445 @@
-[![Latest Release][latest-release-shield]][latest-release-url]
-[![Contributors][contributors-shield]][contributors-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![AGPL License][license-shield]][license-url]
-[![Docker Pulls][docker-pull]][docker-url]
-[![GHCR Pulls][ghcr-pulls]][ghcr-url]
+# 经贸烘焙社区
 
-<!-- PROJECT LOGO -->
-<br />
-<p align="center">
-  <a href="https://github.com/mealie-recipes/mealie">
-<svg style="width:100px;height:100px" viewBox="0 0 24 24">
-    <path fill="currentColor" d="M8.1,13.34L3.91,9.16C2.35,7.59 2.35,5.06 3.91,3.5L10.93,10.5L8.1,13.34M13.41,13L20.29,19.88L18.88,21.29L12,14.41L5.12,21.29L3.71,19.88L13.36,10.22L13.16,10C12.38,9.23 12.38,7.97 13.16,7.19L17.5,2.82L18.43,3.74L15.19,7L16.15,7.94L19.39,4.69L20.31,5.61L17.06,8.85L18,9.81L21.26,6.56L22.18,7.5L17.81,11.84C17.03,12.62 15.77,12.62 15,11.84L14.78,11.64L13.41,13Z" />
-</svg>
-  </a>
+> 基于 Mealie 改造的智慧化烘焙社区平台，集成了完整的食谱管理系统和专为教育场景设计的烘焙社区功能
 
-  <h3 align="center">Mealie</h3>
+## 📖 项目简介
 
-  <p align="center">
-    A Place For All Your Recipes
-    <br />
-    <a href="https://docs.mealie.io/"><strong>Explore the docs »</strong></a>
-  <a href="https://github.com/mealie-recipes/mealie">
-  </a>
-    <br />
-    <a href="https://demo.mealie.io/">View Demo</a>
-    ·
-    <a href="https://github.com/mealie-recipes/mealie/issues">Report Bug</a>
-    ·
-    <a href="https://github.com/mealie-recipes/mealie/pkgs/container/mealie">GitHub Container Registry</a>
-</p>
+经贸烘焙社区是一个面向学校学生的智慧化烘焙社区平台，基于 [Mealie](https://github.com/mealie-recipes/mealie) 开源食谱管理系统改造而成。该系统不仅保留了 Mealie 强大的食谱管理功能，还新增了专为教育场景设计的烘焙社区功能，为学生提供了一个完整的食谱学习、作品展示、互动交流的平台。
 
+### 核心功能
 
+#### Mealie 原有功能（食谱管理系统）
 
+- 📚 **食谱管理**：完整的食谱创建、编辑、浏览、删除功能
+- 🔗 **食谱导入**：支持从 URL 自动导入食谱，或手动创建食谱
+- 📝 **食谱编辑**：丰富的食谱编辑器，支持食材、步骤、图片等
+- 🏷️ **分类标签**：支持食谱分类和标签管理，便于组织和管理
+- 🛒 **购物清单**：根据食谱自动生成购物清单，支持分组管理
+- 📅 **饮食计划**：制定每周饮食计划，合理安排食谱
+- 👨‍👩‍👧‍👦 **家庭共享**：支持多用户、多家庭共享食谱
+- 📱 **响应式设计**：支持桌面端和移动端访问
+- 🔍 **搜索功能**：强大的食谱搜索和筛选功能
+- 📊 **数据管理**：支持食谱批量操作、导出、导入等
 
-[![Product Name Screen Shot][product-screenshot]](https://docs.mealie.io)
+#### 新增烘焙社区功能
 
-# About The Project
+- 📸 **作品展示**：学生可以提交自己的烘焙作品，展示制作成果和心得
+- ⭐ **评分评论**：对食谱进行1-5星评分和文字评论，每个用户对每个食谱只能评论一次
+- 🌸 **互动投票**：为喜欢的作品送花或送鸡蛋（消耗积分），增强社区互动
+- 📅 **每日签到**：每日签到获得积分，连续签到有额外奖励
+- 🏆 **排行榜系统**：积分排行榜、鲜花榜、鸡蛋榜，激励学生积极参与
+- 👥 **班级管理**：按班级、小组筛选和查看作品，便于老师管理
+- 👤 **个人中心**：查看个人作品、积分、签到记录、收到的鲜花和鸡蛋
+- 🎥 **视频教学**：食谱支持制作视频和要点视频，帮助学生更好地学习
+- 🔐 **权限管理**：学生、老师、管理员三种角色，不同权限管理
 
-Mealie is a self hosted recipe manager, meal planner and shopping list with a RestAPI backend and a reactive frontend built in Vue for a pleasant user experience for the whole family. Easily add recipes into your database by providing the URL and Mealie will automatically import the relevant data, or add a family recipe with the UI editor. Mealie also provides an API for interactions from 3rd party applications.
+## 🎯 项目特色
 
-- [Remember to join the Discord](https://discord.gg/QuStdQGSGK)!
-- [Documentation](https://docs.mealie.io/)
+### 1. 用户角色权限管理
+- **学生**：可以查看食谱、评论、上传作品、投票，但不能创建食谱
+- **老师**：可以创建和管理食谱，查看所有班级信息，管理学生作品
+- **管理员**：拥有所有权限，可以管理用户、食谱、作品等
 
+### 2. 强制资料完善机制
+- 首次登录强制弹窗要求完善个人资料
+- 必须填写：真实姓名、年级、班级、上传头像
+- 未完善资料的用户功能受限（不能评论、上传作品、投票）
+- 确保社区信息的真实性和可追溯性
 
-## Key Features
-- Recipe imports: Create recipes, by **importing from a URL** or entering data manually
-- Meal Planner: Use the **Meal Planner** to plan your what you'll cook for the next week
-- Shopping List: Put the necessary ingredients on your **Shopping List**, organised into sections of your local supermarket
-- Cookbooks: Group recipes into **Cookbooks** based on your own criteria
-- Docker: Easy **Docker** deployment
-- Localisation: **Translations** for 35+ languages
+### 3. 积分激励系统
+- 每日签到获得10积分，连续签到有额外奖励
+- 送花/送鸡蛋消耗5积分，鼓励学生积极参与互动
+- 积分仅用于社区互动，不兑换实物，保持教育性质
+- 积分排行榜激励学生持续参与
 
-<!-- CONTRIBUTING -->
-## Contributing
+### 4. 作品展示与管理
+- 每个用户对每个食谱只能提交一次作品，确保作品质量
+- 支持图片上传和制作心得分享
+- 作品支持按班级、小组筛选和排序（最新、鲜花最多、鸡蛋最多）
+- 作品集页面采用瀑布流布局，美观易用
 
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**. If you're going to be working on the code-base, you'll want to use the nightly documentation to ensure you get the latest information.
+### 5. 评分评论系统
+- 1-5星评分 + 文字评论，全面评价食谱
+- 每个用户对每个食谱只能评论一次，确保评价真实性
+- 评论不可删除，但可以修改，保证评价的严肃性
+- 显示用户头像、姓名、班级信息，增强社区感
 
-- See the [Contributors Guide](https://nightly.mealie.io/contributors/developers-guide/code-contributions/) for help getting started.
-- We use [VSCode Dev Containers](https://code.visualstudio.com/docs/remote/containers) to make it easy for contributors to get started!
+### 6. 视频教学支持
+- 食谱支持添加制作视频和要点视频
+- 帮助学生更直观地学习烘焙技巧
+- 视频播放器集成在食谱详情页
 
-If you are not a coder, you can still contribute financially. Financial contributions help me prioritize working on this project over others and helps me know that there is a real demand for project development.
+## 🛠️ 技术栈
 
-<a href="https://www.buymeacoffee.com/haykot" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-green.png" alt="Buy Me A Coffee" style="height: 30px !important;width: 107px !important;" ></a>
+### 后端技术栈
+- **Python 3.11+** - 编程语言
+- **FastAPI** - 现代、快速的Web框架，提供RESTful API
+- **SQLAlchemy** - ORM框架，数据库操作
+- **Alembic** - 数据库迁移工具，管理数据库版本
+- **PostgreSQL/SQLite** - 数据库支持
+- **Pydantic** - 数据验证和序列化
 
-### Translations
+### 前端技术栈
+- **Nuxt 3** - Vue.js全栈框架
+- **Vue 3** - 渐进式JavaScript框架，响应式UI
+- **Vuetify 3** - Material Design组件库，提供丰富的UI组件
+- **TypeScript** - 类型安全的JavaScript，提高代码质量
+- **Vue I18n** - 国际化支持，默认中文
+- **Axios** - HTTP客户端，API请求
 
-Translations can be a great way for **non-coders** to contribute to the project. We use [Crowdin](https://crowdin.com/project/mealie) to allow several contributors to work on translating Mealie. You can simply help by voting for your preferred translations, or even by completely translating Mealie into a new language.
+### 数据库设计
 
-For more information, check out the translation page on the [contributor's guide](https://nightly.mealie.io/contributors/translating/).
+#### 新增数据表
+1. **user_baking_records** - 用户烘焙作品记录
+2. **recipe_ratings** - 食谱评分和评论
+3. **user_points** - 用户积分系统
+4. **work_votes** - 作品投票记录
+5. **user_classes** - 用户班级和小组信息
+6. **user_details** - 用户详细资料（真实姓名、年级、班级、头像）
 
-<!-- LICENSE -->
-## License
-Distributed under the AGPL License. See `LICENSE` for more information.
+## 📁 项目结构
 
+```
+mealie/
+├── mealie/                    # 后端代码
+│   ├── db/models/            # 数据库模型
+│   │   ├── baking/           # 烘焙社区相关模型
+│   │   └── users/            # 用户相关模型
+│   ├── routes/               # API路由
+│   │   ├── baking/          # 烘焙社区路由
+│   │   └── users/            # 用户路由
+│   ├── schema/               # Pydantic Schemas
+│   │   ├── baking/          # 烘焙社区Schemas
+│   │   └── user/            # 用户Schemas
+│   └── alembic/versions/    # 数据库迁移脚本
+│
+├── frontend/                  # 前端代码
+│   ├── components/           # Vue组件
+│   │   └── Domain/Baking/   # 烘焙社区组件
+│   ├── pages/                # 页面
+│   │   └── baking/          # 烘焙社区页面
+│   ├── lib/api/              # API客户端
+│   │   └── user/            # 用户API
+│   └── lang/messages/       # 国际化文件
+│
+└── README.md                 # 本文件
+```
 
-## Sponsors
+## 🚀 快速开始
 
-Huge thanks to all the sponsors of this project on [Github Sponsors](https://github.com/sponsors/hay-kot) and Buy Me a Coffee. Without you, this project would surely not be possible.
+### 环境要求
 
-Thanks to Depot for providing build instances for our Docker image builds.
+- Python 3.11+
+- Node.js 18+
+- PostgreSQL 12+ (或 SQLite)
 
-[![Built with Depot](https://depot.dev/badges/built-with-depot.svg)](https://depot.dev?utm_source=Mealie)
+### 安装步骤
 
+1. **克隆项目**
+```bash
+git clone <your-repo-url>
+cd mealie
+```
 
+2. **安装后端依赖**
+```bash
+# 创建虚拟环境
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/mealie-recipes/mealie.svg?style=flat-square
-[docker-pull]: https://img.shields.io/docker/pulls/hkotel/mealie?style=flat-square
-[docker-url]: https://hub.docker.com/r/hkotel/mealie
-[ghcr-pulls]: https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fipitio.github.io%2Fbackage%2Fmealie-recipes%2Fmealie%2Fmealie.json&query=%24.downloads&style=flat-square&label=ghcr%20pulls
-[ghcr-url]: https://github.com/mealie-recipes/mealie/pkgs/container/mealie
-[contributors-url]: https://github.com/mealie-recipes/mealie/graphs/contributors
-[stars-shield]: https://img.shields.io/github/stars/mealie-recipes/mealie.svg?style=flat-square
-[stars-url]: https://github.com/mealie-recipes/mealie/stargazers
-[issues-shield]: https://img.shields.io/github/issues/mealie-recipes/mealie.svg?style=flat-square
-[issues-url]: https://github.com/mealie-recipes/mealie/issues
-[latest-release-shield]: https://img.shields.io/github/v/release/mealie-recipes/mealie?style=flat-square&label=latest%20release
-[latest-release-url]: https://github.com/mealie-recipes/mealie/releases
-[license-shield]: https://img.shields.io/github/license/mealie-recipes/mealie.svg?style=flat-square
-[license-url]: https://github.com/mealie-recipes/mealie/blob/mealie-next/LICENSE
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=flat-square&logo=linkedin&colorB=555
-[linkedin-url]: https://linkedin.com/in/hay-kot
-[product-screenshot]: docs/docs/assets/img/home_screenshot.png
+# 安装依赖
+pip install -r requirements.txt
+```
+
+3. **安装前端依赖**
+```bash
+cd frontend
+npm install  # 或 yarn install
+```
+
+4. **配置环境变量**
+```bash
+# 复制环境变量文件
+cp .env.example .env
+# 编辑 .env 文件，配置数据库等信息
+```
+
+5. **运行数据库迁移**
+```bash
+# 在项目根目录
+alembic upgrade head
+```
+
+6. **启动开发服务器**
+
+后端：
+```bash
+# 在项目根目录
+uvicorn mealie.main:app --reload
+```
+
+前端：
+```bash
+# 在 frontend 目录
+npm run dev  # 或 yarn dev
+```
+
+## 📝 功能详细说明
+
+### Mealie 原有功能（食谱管理系统）
+
+#### 1. 食谱管理
+- **食谱创建**：
+  - 支持手动创建食谱，使用丰富的可视化编辑器
+  - 支持从 URL 自动导入食谱（支持数百个网站）
+  - 支持从图片识别创建食谱
+  - 支持从其他平台导入（Tandoor、Nextcloud Cookbook、Paprika、Chowdown 等）
+- **食谱编辑**：
+  - 完整的食材管理（名称、数量、单位、备注）
+  - 详细的制作步骤（支持图片、视频）
+  - 食谱图片和附件管理
+  - 营养信息记录
+  - 自定义字段（key-value 对）
+- **食谱浏览**：
+  - 美观的食谱详情页面
+  - 支持打印食谱
+  - 支持分享链接
+  - 响应式设计，支持移动端查看
+- **食谱搜索**：
+  - 智能搜索，支持关键词和精确匹配
+  - 模糊搜索（使用 PostgreSQL 时）
+  - 按分类、标签、食材等筛选
+  - 高级搜索功能
+
+#### 2. 分类和标签系统
+- **分类管理**：
+  - 支持多级分类结构
+  - 灵活的食谱分类组织
+  - 分类树形视图
+- **标签系统**：
+  - 灵活的标签管理
+  - 支持自定义标签
+  - 标签颜色标记
+- **筛选功能**：
+  - 按分类快速筛选
+  - 按标签筛选
+  - 组合筛选条件
+
+#### 3. 购物清单
+- **自动生成**：
+  - 根据选定的食谱自动生成购物清单
+  - 自动合并相同食材
+  - 支持数量计算
+- **分组管理**：
+  - 按超市区域分组
+  - 自定义分组规则
+  - 拖拽排序
+- **多清单支持**：
+  - 支持创建多个购物清单
+  - 清单命名和分类
+- **共享功能**：
+  - 家庭成员共享购物清单
+  - 实时同步更新
+
+#### 4. 饮食计划（Meal Planner）
+- **周计划**：
+  - 制定每周的饮食计划
+  - 按日期安排食谱
+  - 支持早餐、午餐、晚餐、零食等
+- **日历视图**：
+  - 直观的日历视图
+  - 月视图和周视图切换
+  - 快速查看计划
+- **快速添加**：
+  - 从食谱库快速添加到计划
+  - 批量添加功能
+- **随机生成**：
+  - 根据规则随机生成饮食计划
+  - 高级规则配置
+- **计划分享**：
+  - 与家庭成员分享计划
+  - 导出计划
+
+#### 5. 食谱合集（Cookbooks）
+- **合集管理**：
+  - 创建自定义食谱合集
+  - 按主题组织食谱
+  - 合集封面和描述
+- **合集浏览**：
+  - 美观的合集展示页面
+  - 合集内食谱浏览
+
+#### 6. 用户和权限管理
+- **多用户支持**：
+  - 支持多个用户账号
+  - 用户注册和登录
+  - 用户资料管理
+- **家庭管理**：
+  - 创建和管理家庭组
+  - 家庭成员共享
+  - 家庭级别的权限控制
+- **群组管理**：
+  - 支持多个群组
+  - 群组级别的食谱共享
+  - 群组设置和配置
+- **权限控制**：
+  - 细粒度的权限管理
+  - 用户角色分配
+  - 资源访问控制
+- **用户偏好**：
+  - 个性化设置
+  - 界面主题定制
+  - 语言和时区设置
+
+#### 7. API 和集成
+- **RESTful API**：
+  - 完整的 REST API
+  - 交互式 API 文档（Swagger）
+  - API 认证和授权
+- **Webhook 支持**：
+  - 事件驱动的 Webhook
+  - 自定义 Webhook 配置
+- **第三方集成**：
+  - 支持第三方应用集成
+  - 开放的数据格式
+
+#### 8. 数据管理
+- **批量操作**：
+  - 批量导出食谱
+  - 批量删除
+  - 批量添加标签和分类
+- **数据导出**：
+  - 支持多种格式导出
+  - JSON、PDF 等格式
+- **数据导入**：
+  - 从其他平台迁移
+  - 批量导入功能
+- **数据备份**：
+  - 数据库备份
+  - 食谱数据备份
+
+#### 9. 其他功能
+- **时间线**：记录食谱的制作历史
+- **工具管理**：管理烘焙工具和设备
+- **食材库**：管理常用食材信息
+- **单位管理**：自定义计量单位
+- **多语言支持**：支持 35+ 种语言
+- **PWA 支持**：渐进式 Web 应用，可安装到设备
+
+### 新增烘焙社区功能
+
+#### 1. 作品提交与展示
+- **提交入口**：在食谱详情页的"作品集"区域可以提交作品
+- **提交限制**：每个用户对每个食谱只能提交一次，确保作品质量
+- **作品内容**：支持上传成品图片和填写制作心得
+- **作品展示**：作品集页面采用瀑布流布局，支持按班级、小组筛选和多种排序方式
+
+#### 2. 评分评论功能
+- **评分方式**：1-5星评分 + 文字评论
+- **评论限制**：每个用户对每个食谱只能评论一次，防止刷评
+- **评论管理**：评论不可删除，但可以修改，保证评价的严肃性
+- **评论显示**：显示用户头像、真实姓名、年级、班级信息
+
+#### 3. 互动投票系统
+- **投票方式**：为作品送花（点赞）或送鸡蛋（差评）
+- **投票限制**：每个用户对每个作品每种类型只能投票一次，防止刷票
+- **积分消耗**：每次投票消耗5积分，鼓励学生谨慎投票
+- **投票统计**：实时显示作品的鲜花数和鸡蛋数
+
+#### 4. 每日签到系统
+- **签到奖励**：每日签到获得10积分
+- **连续奖励**：连续签到有额外奖励，鼓励学生坚持参与
+- **签到记录**：在个人主页和签到页面查看签到历史和连续天数
+
+#### 5. 排行榜系统
+- **积分排行榜**：按用户总积分排序，激励学生持续参与
+- **鲜花榜**：按作品收到鲜花数排序，展示最受欢迎的作品
+- **鸡蛋榜**：按作品收到鸡蛋数排序，展示需要改进的作品
+- **用户信息**：排行榜显示用户真实姓名和班级信息
+
+#### 6. 个人中心
+- **个人资料**：查看和编辑真实姓名、年级、班级、头像
+- **作品管理**：查看自己提交的所有作品
+- **积分统计**：查看总积分、连续签到天数
+- **互动统计**：查看收到的鲜花数和鸡蛋数
+
+#### 7. 班级管理
+- **班级筛选**：在作品集页面可以按班级筛选作品
+- **小组筛选**：可以按小组筛选作品
+- **权限管理**：老师可以查看所有班级信息，学生可以查看全部但可以筛选
+
+## 🎯 功能对比
+
+### Mealie 原有功能 vs 新增功能
+
+| 功能类别     | Mealie 原有      | 新增烘焙社区功能     |
+| ------------ | ---------------- | -------------------- |
+| **食谱管理** | ✅ 完整的食谱CRUD | ✅ 扩展视频支持       |
+| **用户系统** | ✅ 基础用户管理   | ✅ 角色权限、资料完善 |
+| **社交功能** | ❌ 无             | ✅ 评分评论、作品展示 |
+| **互动功能** | ❌ 无             | ✅ 投票、签到、排行榜 |
+| **教育功能** | ❌ 无             | ✅ 班级管理、作品集   |
+| **激励系统** | ❌ 无             | ✅ 积分系统、排行榜   |
+
+## 🔧 系统配置
+
+### 用户角色设置
+系统支持三种角色，通过数据库字段 `role` 管理：
+- `student` - 学生（默认角色）
+- `teacher` - 老师
+- `admin` - 管理员
+
+### 权限详细说明
+- **学生（student）**：
+  - ✅ 查看食谱详情
+  - ✅ 对食谱进行评分和评论
+  - ✅ 上传烘焙作品
+  - ✅ 为作品投票（送花/送鸡蛋）
+  - ✅ 每日签到
+  - ❌ 不能创建食谱
+
+- **老师（teacher）**：
+  - ✅ 拥有学生的所有权限
+  - ✅ 可以创建和管理食谱
+  - ✅ 可以查看所有班级和小组的信息
+  - ✅ 可以管理学生作品
+
+- **管理员（admin）**：
+  - ✅ 拥有所有权限
+  - ✅ 可以管理用户、角色、食谱、作品等所有内容
+
+### 资料完善要求
+- **强制完善**：用户首次登录会弹出强制对话框要求完善资料
+- **必填信息**：真实姓名、年级、班级、头像
+- **功能限制**：未完善资料的用户无法使用以下功能：
+  - 不能评论食谱
+  - 不能上传作品
+  - 不能为作品投票
+
+## 🌐 国际化支持
+
+- **默认语言**：中文（zh-CN）
+- **语言配置**：前端和后端均支持中文作为默认语言
+- **翻译文件**：所有界面文本已完整汉化
+- **扩展性**：支持添加其他语言
+
+## 📄 许可证
+
+本项目基于 [Mealie](https://github.com/mealie-recipes/mealie) 开源项目改造，遵循原项目的许可证要求。
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+## 📧 联系方式
+
+如有问题或建议，请通过 GitHub Issues 联系。
+
+## 🙏 致谢
+
+- [Mealie](https://github.com/mealie-recipes/mealie) - 基于此项目改造
+- 所有贡献者和使用者
+
+---
+
+**注意**：本项目为教育用途，专为学校烘焙教学和社区交流设计，请遵守相关法律法规和学校规定。
