@@ -42,7 +42,19 @@ class WorkVote(SqlAlchemyBase, BaseMixins):
     user: Mapped["User"] = orm.relationship("User", back_populates="work_votes", foreign_keys=[user_id])
     
     # 投票类型
-    vote_type: Mapped[VoteType] = mapped_column(SQLEnum(VoteType), nullable=False, index=True)
+    # 说明：
+    # - 早期数据库中该字段以字符串形式存储为 "flower"/"egg"
+    # - 这里通过 values_callable 显式指定使用 Enum.value（小写字符串）作为持久化值
+    #   避免 SQLAlchemy 默认使用枚举名称 "FLOWER"/"EGG" 导致 LookupError
+    vote_type: Mapped[VoteType] = mapped_column(
+        SQLEnum(
+            VoteType,
+            values_callable=lambda x: [e.value for e in x],
+            name="votetype",
+        ),
+        nullable=False,
+        index=True,
+    )
     
     # 关联信息
     group_id: AssociationProxy[GUID] = association_proxy("work", "group_id")

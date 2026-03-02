@@ -13,6 +13,7 @@ export interface BakingRecord {
   notes?: string;
   flowerCount: number;
   eggCount: number;
+  isExcellent?: boolean;
   createdAt: string;
   updateAt: string;
   userName?: string;
@@ -24,6 +25,10 @@ export interface BakingRecord {
   avatarUrl?: string;
   grade?: string;
   recipeName?: string;
+  totalExp?: number;
+  levelKey?: string;
+  levelName?: string;
+  levelEmoji?: string;
 }
 
 export interface BakingRecordCreate {
@@ -95,6 +100,43 @@ export interface CheckinResponse {
   message?: string;
 }
 
+export interface CheckinHistoryResponse {
+  checkinDates: string[];
+  dailyPoints: number;
+}
+
+export interface UserExperience {
+  userId: string;
+  totalExp: number;
+  levelKey: string;
+  levelName: string;
+  levelEmoji: string;
+  currentLevelMinExp?: number;
+  nextLevelMinExp?: number | null;
+  nextLevelName?: string | null;
+}
+
+export interface UserExperienceBatch {
+  items: UserExperience[];
+}
+
+export interface UserExperienceHistoryItem {
+  id: string;
+  source: string;
+  expDelta: number;
+  totalExpAfter: number;
+  note?: string;
+  createdAt: string;
+}
+
+export interface UserExperienceHistory {
+  page: number;
+  perPage: number;
+  total: number;
+  pages: number;
+  items: UserExperienceHistoryItem[];
+}
+
 export interface VoteRequest {
   workId: string;
   voteType: "flower" | "egg";
@@ -122,6 +164,10 @@ export interface ReceivedVoteRecord {
 }
 
 export interface ReceivedVoteRecords {
+  page: number;
+  perPage: number;
+  total: number;
+  pages: number;
   items: ReceivedVoteRecord[];
 }
 
@@ -148,6 +194,7 @@ export interface UserClassUpdate {
 const routes = {
   bakingRecords: `${prefix}/baking/`,
   bakingRecord: (id: string) => `${prefix}/baking/${id}`,
+  bakingRecordExcellent: (id: string) => `${prefix}/baking/${id}/excellent`,
   bakingGrades: `${prefix}/baking/grades`,
   bakingClasses: `${prefix}/baking/classes`,
   recipeRatings: (recipeId: string) => `${prefix}/recipes/${recipeId}/ratings`,
@@ -157,6 +204,11 @@ const routes = {
   pointsMe: `${prefix}/points/me`,
   pointsCheckin: `${prefix}/points/checkin`,
   pointsLeaderboard: `${prefix}/points/leaderboard`,
+  pointsHistory: `${prefix}/points/history`,
+  pointsExperienceMe: `${prefix}/points/experience/me`,
+  pointsExperienceUsers: `${prefix}/points/experience/users`,
+  pointsExperienceUser: (userId: string) => `${prefix}/points/experience/users/${userId}`,
+  pointsExperienceHistory: `${prefix}/points/experience/history`,
   votes: `${prefix}/votes/`,
   votesReceived: `${prefix}/votes/received`,
   voteCancel: (workId: string, voteType: string) => `${prefix}/votes/${workId}/${voteType}`,
@@ -172,6 +224,7 @@ export class BakingApi {
   async getBakingRecords(params?: {
     recipeId?: string;
     userId?: string;
+    keyword?: string;
     grade?: string;
     className?: string;
     sortBy?: string;
@@ -183,6 +236,7 @@ export class BakingApi {
       ? {
           ...(params.recipeId ? { recipe_id: params.recipeId } : {}),
           ...(params.userId ? { user_id: params.userId } : {}),
+          ...(params.keyword ? { keyword: params.keyword } : {}),
           ...(params.grade ? { grade: params.grade } : {}),
           ...(params.className ? { class_name: params.className } : {}),
           ...(params.sortBy ? { sort_by: params.sortBy } : {}),
@@ -214,6 +268,14 @@ export class BakingApi {
       image_url: record.imageUrl,
       notes: record.notes,
     });
+    return data;
+  }
+
+  async markBakingRecordExcellent(id: string): Promise<BakingRecord> {
+    const { data, error } = await this.request.put<BakingRecord, Record<string, never>>(routes.bakingRecordExcellent(id), {});
+    if (!data) {
+      throw error || new Error("设为精华失败");
+    }
     return data;
   }
 
@@ -266,24 +328,61 @@ export class BakingApi {
     return data;
   }
 
-  // 投票相关
-  async vote(vote: VoteRequest): Promise<VoteResponse> {
-    const { data } = await this.request.post<VoteResponse>(routes.votes, {
-      work_id: vote.workId,
-      vote_type: vote.voteType,
+  async getCheckinHistory(): Promise<CheckinHistoryResponse> {
+    const { data } = await this.request.get<CheckinHistoryResponse>(routes.pointsHistory);
+    return data;
+  }
+
+  async getMyExperience(): Promise<UserExperience> {
+    const { data } = await this.request.get<UserExperience>(routes.pointsExperienceMe);
+    return data;
+  }
+
+  async getUsersExperience(userIds: string[]): Promise<UserExperienceBatch> {
+    const query = userIds?.length ? { user_ids: userIds } : {};
+    const { data } = await this.request.get<UserExperienceBatch>(route(routes.pointsExperienceUsers, query));
+    return data;
+  }
+
+  async updateUserExperience(userId: string, totalExp: number): Promise<UserExperience> {
+    const { data } = await this.request.put<UserExperience>(routes.pointsExperienceUser(userId), {
+      total_exp: totalExp,
     });
     return data;
   }
 
-  async cancelVote(workId: string, voteType: string): Promise<VoteResponse> {
-    const { data } = await this.request.delete<VoteResponse>(routes.voteCancel(workId, voteType));
+  async getMyExperienceHistory(page: number = 1, perPage: number = 20): Promise<UserExperienceHistory> {
+    const { data } = await this.request.get<UserExperienceHistory>(
+      route(routes.pointsExperienceHistory, { page, per_page: perPage }),
+    );
     return data;
   }
 
-  async getReceivedVotes(params?: { voteType?: "flower" | "egg"; limit?: number }): Promise<ReceivedVoteRecords> {
+  // 投票相关
+  async vote(vote: VoteRequest): Promise<VoteResponse> {
+    const { data, error } = await this.request.post<VoteResponse>(routes.votes, {
+      work_id: vote.workId,
+      vote_type: vote.voteType,
+    });
+    if (!data) {
+      throw error || new Error("投票失败");
+    }
+    return data;
+  }
+
+  async cancelVote(workId: string, voteType: string): Promise<VoteResponse> {
+    const { data, error } = await this.request.delete<VoteResponse>(routes.voteCancel(workId, voteType));
+    if (!data) {
+      throw error || new Error("取消投票失败");
+    }
+    return data;
+  }
+
+  async getReceivedVotes(params?: { voteType?: "flower" | "egg"; page?: number; perPage?: number }): Promise<ReceivedVoteRecords> {
     const query = {
       vote_type: params?.voteType,
-      limit: params?.limit,
+      page: params?.page,
+      per_page: params?.perPage,
     };
     const { data } = await this.request.get<ReceivedVoteRecords>(route(routes.votesReceived, query));
     return data;

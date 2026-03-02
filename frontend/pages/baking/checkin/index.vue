@@ -91,6 +91,7 @@
 <script setup lang="ts">
 import { useUserApi } from "~/composables/api/api-client";
 import type { UserPoints } from "~/lib/api/user/baking";
+import { alert } from "~/composables/use-toast";
 
 definePageMeta({
   layout: "default",
@@ -99,9 +100,18 @@ definePageMeta({
 const api = useUserApi();
 const loading = ref(false);
 const points = ref<UserPoints | null>(null);
+
+function getLocalDateString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 const isCheckedIn = computed(() => {
   if (!points.value?.lastCheckinDate) return false;
-  const today = new Date().toISOString().split("T")[0];
+  const today = getLocalDateString();
   return points.value.lastCheckinDate === today;
 });
 
@@ -123,12 +133,13 @@ async function handleCheckin() {
       ...points.value!,
       totalPoints: result.totalPoints,
       consecutiveDays: result.consecutiveDays,
-      lastCheckinDate: new Date().toISOString().split("T")[0],
+      lastCheckinDate: getLocalDateString(),
     };
-    // 显示成功提示
+    alert.success(result.message || `签到成功，获得 ${result.pointsEarned || 10} 积分`);
   } catch (error: any) {
     console.error("签到失败:", error);
-    // 显示错误提示
+    const detail = error?.response?.data?.detail || error?.message || "签到失败，请稍后重试";
+    alert.warning(String(detail));
   } finally {
     loading.value = false;
   }

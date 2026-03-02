@@ -1,6 +1,6 @@
 """Add user details table
 
-Revision ID: b2c3d4e5f6a7
+Revision ID: b2c3d4e5f6a8
 Revises: a1b2c3d4e5f6
 Create Date: 2025-01-15 20:30:00.000000
 
@@ -12,7 +12,7 @@ from alembic import op
 import mealie.db.migration_types
 
 # revision identifiers, used by Alembic.
-revision = "b2c3d4e5f6a7"
+revision = "b2c3d4e5f6a8"
 down_revision: str | None = "a1b2c3d4e5f6"
 branch_labels: str | tuple[str, ...] | None = None
 depends_on: str | tuple[str, ...] | None = None
@@ -21,6 +21,7 @@ depends_on: str | tuple[str, ...] | None = None
 def upgrade():
     bind = op.get_bind()
     inspector = sa.inspect(bind)
+    dialect = bind.dialect.name
     tables = set(inspector.get_table_names())
 
     # Create user_details table
@@ -45,7 +46,8 @@ def upgrade():
         op.create_index(op.f("ix_user_details_class_name"), "user_details", ["class_name"], unique=False)
         op.create_index(op.f("ix_user_details_is_complete"), "user_details", ["is_complete"], unique=False)
         op.create_index(op.f("ix_user_details_created_at"), "user_details", ["created_at"], unique=False)
-        op.create_foreign_key("fk_details_user", "user_details", "users", ["user_id"], ["id"])
+        if dialect != "sqlite":
+            op.create_foreign_key("fk_details_user", "user_details", "users", ["user_id"], ["id"])
 
 
 def downgrade():

@@ -1,5 +1,5 @@
 <template>
-  <v-app dark>
+  <v-app dark :class="{ 'cake-king-app': isCakeKingTheme }">
     <TheSnackbar />
 
     <AppHeader>
@@ -36,10 +36,12 @@ import AppSidebar from "@/components/Layout/LayoutParts/AppSidebar.vue";
 import TheSnackbar from "~/components/Layout/LayoutParts/TheSnackbar.vue";
 import type { SidebarLinks } from "~/types/application-types";
 import { useGlobalI18n } from "~/composables/use-global-i18n";
+import { useCakeKingTheme } from "~/composables/baking/use-cake-king-theme";
 
 const i18n = useGlobalI18n();
 const display = useDisplay();
 const { $globals } = useNuxtApp();
+const { isCakeKingTheme } = useCakeKingTheme();
 
 const sidebar = ref<boolean>(false);
 onMounted(() => {
@@ -114,3 +116,18 @@ const developerLinks: SidebarLinks = [
   },
 ];
 </script>
+
+<style>
+.cake-king-theme .cake-king-app {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(255, 216, 102, 0.14), transparent 44%),
+    radial-gradient(circle at 86% 2%, rgba(255, 232, 160, 0.12), transparent 48%),
+    linear-gradient(180deg, rgba(255, 250, 235, 0.04), rgba(0, 0, 0, 0));
+}
+
+.cake-king-theme .v-toolbar,
+.cake-king-theme .v-card {
+  border-color: rgba(242, 201, 76, 0.32) !important;
+  box-shadow: 0 0 0 1px rgba(242, 201, 76, 0.14), 0 6px 20px rgba(242, 201, 76, 0.14);
+}
+</style>

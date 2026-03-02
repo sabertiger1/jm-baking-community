@@ -98,21 +98,47 @@
                       variant="underlined"
                     />
                     <v-text-field
+                      v-if="isAdmin"
+                      :model-value="adminGrade"
+                      label="年级"
+                      density="comfortable"
+                      variant="underlined"
+                      disabled
+                      hint="管理员固定为该值"
+                      persistent-hint
+                    />
+                    <v-select
+                      v-else
                       v-model="profileExtra.grade"
+                      :items="gradeOptions"
                       label="年级"
                       :disabled="locks.grade"
                       density="comfortable"
                       variant="underlined"
-                      :hint="locks.grade ? '年级已锁定，不可修改' : undefined"
+                      required
+                      :hint="locks.grade ? '年级已锁定，仅允许修改一次' : undefined"
                       persistent-hint
                     />
                     <v-text-field
+                      v-if="isAdmin"
+                      :model-value="adminClassName"
+                      label="班级"
+                      density="comfortable"
+                      variant="underlined"
+                      disabled
+                      hint="管理员固定为该值"
+                      persistent-hint
+                    />
+                    <v-select
+                      v-else
                       v-model="profileExtra.className"
+                      :items="classOptions"
                       label="班级"
                       :disabled="locks.className"
                       density="comfortable"
                       variant="underlined"
-                      :hint="locks.className ? '班级已锁定，不可修改' : undefined"
+                      required
+                      :hint="locks.className ? '班级已锁定，仅允许修改一次' : undefined"
                       persistent-hint
                     />
                   </v-form>
@@ -289,6 +315,14 @@ export default defineNuxtComponent({
       grade: false,
       className: false,
     });
+    const lockedValues = reactive({
+      grade: "",
+      className: "",
+    });
+    const adminGrade = "管理员";
+    const adminClassName = "老师";
+    const gradeOptions = ["23春", "23秋", "24春", "24秋", "25春", "25秋", "26春", "26秋"];
+    const classOptions = ["1班", "2班", "3班", "4班", "5班", "6班", "7班", "普1", "普2", "胖专", "中巴"];
 
     const api = useUserApi();
 
@@ -306,25 +340,48 @@ export default defineNuxtComponent({
       if (locks.fullName && user.value?.fullName) {
         userCopy.value.fullName = user.value.fullName;
       }
+      if (locks.grade) {
+        profileExtra.grade = lockedValues.grade;
+      }
+      if (locks.className) {
+        profileExtra.className = lockedValues.className;
+      }
+
+      if (isAdmin.value) {
+        profileExtra.grade = adminGrade;
+        profileExtra.className = adminClassName;
+      } else {
+        if (!gradeOptions.includes(profileExtra.grade)) {
+          alert.warning("请选择有效的年级");
+          return;
+        }
+        if (!classOptions.includes(profileExtra.className)) {
+          alert.warning("请选择有效的班级");
+          return;
+        }
+      }
+
       const { response } = await api.users.updateOne(userCopy.value.id, userCopy.value);
       if (response?.status === 200) {
         const className = profileExtra.className.trim();
         await upsertUserDetails();
 
         // 班级信息同步到 baking 班级接口（兼容已有功能）
-        if (!locks.className) {
-          await api.baking.updateMyClass({
-            className: className || undefined,
-          });
-        }
+        await api.baking.updateMyClass({
+          className: className || undefined,
+        });
         if (!locks.fullName && (userCopy.value.fullName || "").trim().length > 0) {
           locks.fullName = true;
         }
-        if (!locks.grade && profileExtra.grade.trim().length > 0) {
-          locks.grade = true;
-        }
-        if (!locks.className && profileExtra.className.trim().length > 0) {
-          locks.className = true;
+        if (!isAdmin.value) {
+          if (!locks.grade && profileExtra.grade.trim().length > 0) {
+            locks.grade = true;
+            lockedValues.grade = profileExtra.grade.trim();
+          }
+          if (!locks.className && profileExtra.className.trim().length > 0) {
+            locks.className = true;
+            lockedValues.className = profileExtra.className.trim();
+          }
         }
         auth.refresh();
         alert.success("个人资料已保存");
@@ -334,8 +391,8 @@ export default defineNuxtComponent({
     async function upsertUserDetails(avatarUrl?: string) {
       if (!userCopy.value?.id) return;
       const realName = (userCopy.value.fullName || "").trim();
-      const grade = profileExtra.grade.trim();
-      const className = profileExtra.className.trim();
+      const grade = (isAdmin.value ? adminGrade : profileExtra.grade).trim();
+      const className = (isAdmin.value ? adminClassName : profileExtra.className).trim();
       const fallbackAvatarUrl = api.users.userProfileImage(userCopy.value.id) || undefined;
       const finalAvatarUrl = avatarUrl || fallbackAvatarUrl;
 
@@ -408,23 +465,33 @@ export default defineNuxtComponent({
         if (details) {
           profileExtra.grade = details.grade || "";
           profileExtra.className = details.className || "";
-          locks.grade = !!(details.grade || "").trim();
-          locks.className = !!(details.className || "").trim();
         }
       } catch {
         // ignore
       }
 
-      if (!profileExtra.className) {
+      if (!profileExtra.className && !isAdmin.value) {
         try {
           const myClass = await api.baking.getMyClass();
           profileExtra.className = myClass?.className || "";
-          if (profileExtra.className.trim().length > 0) {
-            locks.className = true;
-          }
         } catch {
           // ignore
         }
+      }
+      if (isAdmin.value) {
+        profileExtra.grade = adminGrade;
+        profileExtra.className = adminClassName;
+        locks.grade = true;
+        locks.className = true;
+        lockedValues.grade = adminGrade;
+        lockedValues.className = adminClassName;
+      } else {
+        const gradeValue = (profileExtra.grade || "").trim();
+        const classValue = (profileExtra.className || "").trim();
+        locks.grade = gradeValue.length > 0;
+        locks.className = classValue.length > 0;
+        lockedValues.grade = gradeValue;
+        lockedValues.className = classValue;
       }
       locks.fullName = (userCopy.value?.fullName || "").trim().length > 0;
     });
@@ -457,6 +524,10 @@ export default defineNuxtComponent({
       userCopy,
       profileExtra,
       locks,
+      adminGrade,
+      adminClassName,
+      gradeOptions,
+      classOptions,
       avatarRefreshKey,
       onAvatarUploaded,
       selectedDefaultActivity,

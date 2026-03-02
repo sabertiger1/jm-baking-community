@@ -103,16 +103,7 @@
                 :name="name"
                 :recipe-id="recipeId"
                 class="ml-auto"
-                :use-items="{
-                  delete: false,
-                  edit: false,
-                  download: true,
-                  mealplanner: true,
-                  shoppingList: true,
-                  print: false,
-                  printPreferences: false,
-                  share: true,
-                }"
+                :use-items="cardMenuItems"
                 @deleted="$emit('delete', slug)"
               />
             </v-card-actions>
@@ -166,6 +157,17 @@ const { isOwnGroup } = useLoggedInState();
 const route = useRoute();
 const groupSlug = computed(() => route.params.groupSlug || auth.user.value?.groupSlug || "");
 const showRecipeContent = computed(() => props.recipeId && props.slug);
+const isAdmin = computed(() => !!auth.user.value?.admin);
+const cardMenuItems = computed(() => ({
+  delete: false,
+  edit: false,
+  download: isAdmin.value,
+  mealplanner: isAdmin.value,
+  shoppingList: isAdmin.value,
+  print: false,
+  printPreferences: false,
+  share: isAdmin.value,
+}));
 const recipeRoute = computed<string>(() => {
   return showRecipeContent.value ? `/g/${groupSlug.value}/r/${props.slug}` : "";
 });

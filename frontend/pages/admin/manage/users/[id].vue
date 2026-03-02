@@ -121,6 +121,47 @@
               update-mode
               :disabled-fields="disabledFields"
             />
+            <v-divider class="my-4" />
+            <v-row>
+              <v-col cols="12" md="6">
+                <v-select
+                  v-model="profileExtra.grade"
+                  :items="gradeOptions"
+                  :disabled="!!user?.admin"
+                  label="年级"
+                  variant="solo-filled"
+                  flat
+                  :rules="[validators.required]"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-select
+                  v-model="profileExtra.className"
+                  :items="classOptions"
+                  :disabled="!!user?.admin"
+                  label="班级"
+                  variant="solo-filled"
+                  flat
+                  :rules="[validators.required]"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field
+                  v-model.number="experienceValue"
+                  type="number"
+                  min="1"
+                  step="1"
+                  label="经验值"
+                  variant="solo-filled"
+                  flat
+                  :rules="[
+                    validators.required,
+                    v => Number.isInteger(Number(v)) || '经验值必须是整数',
+                    v => Number(v) >= 1 || '经验值最小为 1',
+                  ]"
+                />
+              </v-col>
+            </v-row>
           </v-card-text>
         </v-sheet>
       </v-card>
@@ -168,6 +209,15 @@ export default defineNuxtComponent({
     const adminApi = useAdminApi();
 
     const user = ref<UserOut | null>(null);
+    const profileExtra = reactive({
+      grade: "",
+      className: "",
+    });
+    const experienceValue = ref<number>(1);
+    const adminGrade = "管理员";
+    const adminClassName = "老师";
+    const gradeOptions = ["23春", "23秋", "24春", "24秋", "25春", "25秋", "26春", "26秋", adminGrade];
+    const classOptions = ["1班", "2班", "3班", "4班", "5班", "6班", "7班", "普1", "普2", "胖专", "中巴", adminClassName];
     const households = useHouseholdsInGroup(computed(() => user.value?.groupId || ""));
 
     const disabledFields = computed(() => {
@@ -190,6 +240,20 @@ export default defineNuxtComponent({
       if (data) {
         user.value = data;
       }
+
+      const detailsResult = await userApi.users.getUserDetailsAdmin(userId);
+      if (detailsResult.data) {
+        profileExtra.grade = detailsResult.data.grade || "";
+        profileExtra.className = detailsResult.data.className || "";
+      }
+      if (user.value?.admin) {
+        profileExtra.grade = adminGrade;
+        profileExtra.className = adminClassName;
+      }
+
+      const experienceResult = await userApi.baking.getUsersExperience([userId]);
+      const currentExp = experienceResult.items?.[0]?.totalExp;
+      experienceValue.value = currentExp && currentExp >= 1 ? currentExp : 1;
     });
 
     async function handleSubmit() {
@@ -200,6 +264,19 @@ export default defineNuxtComponent({
       if (response?.status === 200 && data) {
         user.value = data;
       }
+
+      if (user.value?.admin) {
+        profileExtra.grade = adminGrade;
+        profileExtra.className = adminClassName;
+      }
+
+      const detailsPayload = {
+        grade: profileExtra.grade,
+        className: profileExtra.className,
+      };
+      await userApi.users.updateUserDetailsAdmin(userId, detailsPayload);
+      await userApi.baking.updateUserExperience(userId, Number(experienceValue.value) || 1);
+      alert.success("用户资料与经验值已更新");
     }
 
     async function handlePasswordReset() {
@@ -228,6 +305,17 @@ export default defineNuxtComponent({
       }
     }
 
+    watch(
+      () => user.value?.admin,
+      (isAdmin) => {
+        if (isAdmin) {
+          profileExtra.grade = adminGrade;
+          profileExtra.className = adminClassName;
+        }
+      },
+      { immediate: true },
+    );
+
     return {
       user,
       disabledFields,
@@ -235,6 +323,10 @@ export default defineNuxtComponent({
       userForm,
       refNewUserForm,
       handleSubmit,
+      profileExtra,
+      experienceValue,
+      gradeOptions,
+      classOptions,
       groups,
       households,
       validators,

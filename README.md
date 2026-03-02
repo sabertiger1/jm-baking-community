@@ -1,151 +1,3 @@
-# 经贸烘焙社区（Mealie 二次开发版）
-
-基于 [Mealie](https://github.com/mealie-recipes/mealie) 改造的校园烘焙教学与互动平台。  
-在保留 Mealie 食谱管理能力的基础上，新增了面向学校场景的作品集、评分评论、投票积分、班级信息与角色权限控制。
-
-## 项目亮点
-
-- 食谱管理、导入、分类、购物清单、饮食计划等 Mealie 原生能力
-- 烘焙作品提交与展示（每人每食谱仅一次）
-- 作品投票（送花/送鸡蛋）+ 积分消耗机制
-- 每日签到 + 积分排行榜
-- 学生/老师/管理员三角色权限
-- 强制资料完善（真实姓名、年级、班级、头像）
-- 作品集与“我的作品”联动展示，支持班级筛选
-
-## 技术栈
-
-- 后端：Python 3.12、FastAPI、SQLAlchemy、Alembic、Pydantic
-- 前端：Nuxt 3、Vue 3、Vuetify 3、TypeScript、Axios
-- 数据库：SQLite（默认）/ PostgreSQL
-
-## 目录结构
-
-```text
-mealie/
-├── mealie/                    # 后端代码
-│   ├── routes/                # API 路由
-│   ├── db/models/             # 数据模型
-│   ├── schema/                # Pydantic 模型
-│   └── alembic/               # 迁移配置与脚本
-├── frontend/                  # 前端代码（Nuxt 3）
-├── docker/                    # Docker 与 Compose 配置
-└── README.md
-```
-
-## 快速启动（推荐 Docker）
-
-### 1) 构建并启动
-
-```bash
-docker compose -f docker/docker-compose.yml up -d --build
-```
-
-默认映射端口为 `9091:9000`，浏览器访问：
-
-- `http://localhost:9091`
-
-### 2) 查看日志
-
-```bash
-docker compose -f docker/docker-compose.yml logs -f
-```
-
-### 3) 停止服务
-
-```bash
-docker compose -f docker/docker-compose.yml down
-```
-
-## 本地开发启动
-
-### 环境要求
-
-- Python `>=3.12,<3.13`
-- Node.js 18+（建议配合 Yarn 1）
-
-### 1) 后端
-
-```bash
-# 项目根目录
-python -m venv .venv
-
-# Linux/macOS
-source .venv/bin/activate
-
-# Windows PowerShell
-# .venv\Scripts\Activate.ps1
-
-pip install -e .
-python -m mealie.main
-```
-
-后端默认运行在 `http://127.0.0.1:9000`（以实际环境变量为准）。
-
-### 2) 前端
-
-```bash
-cd frontend
-yarn install
-yarn dev
-```
-
-前端开发地址通常为 `http://127.0.0.1:3000`。
-
-## 数据库迁移（按需）
-
-如需手动执行迁移：
-
-```bash
-alembic -c mealie/alembic/alembic.ini upgrade head
-```
-
-## 角色与权限
-
-- `student`：可查看食谱、提交作品、评论、投票、签到
-- `teacher`：包含学生能力，并可管理教学相关内容
-- `admin`：全权限
-
-> 学生侧关键限制：未完善资料时，不能提交作品/评论/投票。
-
-## 资料完整性要求
-
-以下字段用于“资料完整”判断：
-
-- 真实姓名 `real_name`
-- 年级 `grade`
-- 班级 `class_name`
-- 头像 `avatar_url`
-
-当资料不完整时，相关接口会返回 `403`，并附带缺失字段提示。
-
-## 烘焙社区核心数据
-
-- `user_baking_records`：作品记录
-- `recipe_ratings`：评分评论
-- `work_votes`：投票记录
-- `user_points`：积分记录
-- `user_details`：资料与完整状态
-- `user_classes`：班级/小组信息
-
-## 常见问题
-
-### 1) 上传作品返回 403
-
-优先检查当前用户资料是否完整（真实姓名、年级、班级、头像）。
-
-### 2) 时间轴有记录但作品集没有
-
-确认 `POST /api/baking/` 是否成功（应为 `201`）；  
-只有作品记录创建成功，才会在“作品集/我的作品”展示。
-
-### 3) 头像不显示
-
-确认前端使用的是媒体访问接口（`/api/media/users/{id}/profile.webp`）而非上传接口。
-
-## 许可证
-
-本项目基于 Mealie 二次开发，遵循上游项目许可证（AGPL-3.0-only）及相关约束。
 # 经贸烘焙社区
 
 > 基于 Mealie 改造的智慧化烘焙社区平台，集成了完整的食谱管理系统和专为教育场景设计的烘焙社区功能
@@ -172,7 +24,7 @@ alembic -c mealie/alembic/alembic.ini upgrade head
 #### 新增烘焙社区功能
 
 - 📸 **作品展示**：学生可以提交自己的烘焙作品，展示制作成果和心得
-- ⭐ **评分评论**：对食谱进行1-5星评分和文字评论，每个用户对每个食谱只能评论一次
+- ⭐ **评分评论**：对食谱进行 1-5 星评分和文字评论，每个用户对每个食谱只能评论一次
 - 🌸 **互动投票**：为喜欢的作品送花或送鸡蛋（消耗积分），增强社区互动
 - 📅 **每日签到**：每日签到获得积分，连续签到有额外奖励
 - 🏆 **排行榜系统**：积分排行榜、鲜花榜、鸡蛋榜，激励学生积极参与
@@ -241,9 +93,11 @@ alembic -c mealie/alembic/alembic.ini upgrade head
 1. **user_baking_records** - 用户烘焙作品记录
 2. **recipe_ratings** - 食谱评分和评论
 3. **user_points** - 用户积分系统
-4. **work_votes** - 作品投票记录
+4. **work_votes** - 作品投票记录（送花/送鸡蛋）
 5. **user_classes** - 用户班级和小组信息
 6. **user_details** - 用户详细资料（真实姓名、年级、班级、头像）
+7. **user_experience** - 用户经验值与等级
+8. **user_experience_history** - 经验变动历史记录
 
 ## 📁 项目结构
 

@@ -157,4 +157,13 @@ export class UserApi extends BaseCRUDAPI<UserIn, UserOut, UserBase> {
   async getUserDetailsAdmin(userId: string) {
     return await this.requests.get<UserDetails>(routes.userDetailsAdmin(userId));
   }
+
+  async updateUserDetailsAdmin(userId: string, data: UserDetailsUpdate) {
+    return await this.requests.put<UserDetails>(routes.userDetailsAdmin(userId), {
+      real_name: data.realName,
+      grade: data.grade,
+      class_name: data.className,
+      avatar_url: data.avatarUrl,
+    });
+  }
 }

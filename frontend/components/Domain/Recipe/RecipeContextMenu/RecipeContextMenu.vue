@@ -112,6 +112,14 @@ defineEmits<{
 }>();
 
 const { $globals } = useNuxtApp();
+const auth = useMealieAuth();
+const isAdmin = computed(() => !!auth.user.value?.admin);
+const adminOnlyActions = new Set<keyof ContextMenuIncludes>([
+  "download",
+  "mealplanner",
+  "shoppingList",
+  "share",
+]);
 
 const isMenuContentLoaded = ref(false);
 
@@ -121,8 +129,17 @@ const icon = computed(() => {
 
 // Props to pass to the content component (excluding internal wrapper props)
 const contentProps = computed(() => {
+  const normalizedUseItems = { ...(props.useItems || {}) };
+  if (!isAdmin.value) {
+    for (const key of adminOnlyActions) {
+      normalizedUseItems[key] = false;
+    }
+  }
   const { ...rest } = props;
-  return rest;
+  return {
+    ...rest,
+    useItems: normalizedUseItems,
+  };
 });
 
 function onMenuToggle(isOpen: boolean) {

@@ -69,9 +69,6 @@
                 <v-icon start>{{ $globals.icons.pages }}</v-icon>
                 <span class="text-truncate">{{ cookbook.name }}</span>
               </v-card-title>
-              <v-card-subtitle>
-                {{ cookbook.household?.name || "未命名家庭" }}
-              </v-card-subtitle>
               <v-card-text class="text-body-2 text-medium-emphasis">
                 {{ cookbook.description || "点击查看该合集内的配方" }}
               </v-card-text>

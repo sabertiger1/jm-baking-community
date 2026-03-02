@@ -22,6 +22,7 @@ def upgrade():
     # Add video fields to recipes table
     bind = op.get_bind()
     inspector = sa.inspect(bind)
+    dialect = bind.dialect.name
     recipe_columns = {col["name"] for col in inspector.get_columns("recipes")}
     tables = set(inspector.get_table_names())
 
@@ -53,8 +54,9 @@ def upgrade():
         op.create_index(
             op.f("ix_user_baking_records_created_at"), "user_baking_records", ["created_at"], unique=False
         )
-        op.create_foreign_key("fk_baking_record_recipe", "user_baking_records", "recipes", ["recipe_id"], ["id"])
-        op.create_foreign_key("fk_baking_record_user", "user_baking_records", "users", ["user_id"], ["id"])
+        if dialect != "sqlite":
+            op.create_foreign_key("fk_baking_record_recipe", "user_baking_records", "recipes", ["recipe_id"], ["id"])
+            op.create_foreign_key("fk_baking_record_user", "user_baking_records", "users", ["user_id"], ["id"])
         tables.add("user_baking_records")
 
     # Create recipe_ratings table
@@ -75,8 +77,9 @@ def upgrade():
         op.create_index(op.f("ix_recipe_ratings_recipe_id"), "recipe_ratings", ["recipe_id"], unique=False)
         op.create_index(op.f("ix_recipe_ratings_user_id"), "recipe_ratings", ["user_id"], unique=False)
         op.create_index(op.f("ix_recipe_ratings_created_at"), "recipe_ratings", ["created_at"], unique=False)
-        op.create_foreign_key("fk_rating_recipe", "recipe_ratings", "recipes", ["recipe_id"], ["id"])
-        op.create_foreign_key("fk_rating_user", "recipe_ratings", "users", ["user_id"], ["id"])
+        if dialect != "sqlite":
+            op.create_foreign_key("fk_rating_recipe", "recipe_ratings", "recipes", ["recipe_id"], ["id"])
+            op.create_foreign_key("fk_rating_user", "recipe_ratings", "users", ["user_id"], ["id"])
         tables.add("recipe_ratings")
 
     # Create user_points table
@@ -95,7 +98,8 @@ def upgrade():
         )
         op.create_index(op.f("ix_user_points_user_id"), "user_points", ["user_id"], unique=True)
         op.create_index(op.f("ix_user_points_created_at"), "user_points", ["created_at"], unique=False)
-        op.create_foreign_key("fk_points_user", "user_points", "users", ["user_id"], ["id"])
+        if dialect != "sqlite":
+            op.create_foreign_key("fk_points_user", "user_points", "users", ["user_id"], ["id"])
         tables.add("user_points")
 
     # Create work_votes table
@@ -115,8 +119,9 @@ def upgrade():
         op.create_index(op.f("ix_work_votes_user_id"), "work_votes", ["user_id"], unique=False)
         op.create_index(op.f("ix_work_votes_vote_type"), "work_votes", ["vote_type"], unique=False)
         op.create_index(op.f("ix_work_votes_created_at"), "work_votes", ["created_at"], unique=False)
-        op.create_foreign_key("fk_vote_work", "work_votes", "user_baking_records", ["work_id"], ["id"])
-        op.create_foreign_key("fk_vote_user", "work_votes", "users", ["user_id"], ["id"])
+        if dialect != "sqlite":
+            op.create_foreign_key("fk_vote_work", "work_votes", "user_baking_records", ["work_id"], ["id"])
+            op.create_foreign_key("fk_vote_user", "work_votes", "users", ["user_id"], ["id"])
         tables.add("work_votes")
 
     # Create user_classes table
@@ -136,7 +141,8 @@ def upgrade():
         op.create_index(op.f("ix_user_classes_class_name"), "user_classes", ["class_name"], unique=False)
         op.create_index(op.f("ix_user_classes_group_name"), "user_classes", ["group_name"], unique=False)
         op.create_index(op.f("ix_user_classes_created_at"), "user_classes", ["created_at"], unique=False)
-        op.create_foreign_key("fk_class_user", "user_classes", "users", ["user_id"], ["id"])
+        if dialect != "sqlite":
+            op.create_foreign_key("fk_class_user", "user_classes", "users", ["user_id"], ["id"])
         tables.add("user_classes")
 
 

@@ -3,6 +3,7 @@ from fastapi import HTTPException, status
 from pydantic import UUID4
 
 from mealie.db.models.users.users import UserRole
+from mealie.db.models.users.user_details import UserDetails
 from mealie.routes._base import BaseUserController, controller
 from mealie.routes._base.routers import UserAPIRouter
 from mealie.schema.user.user_details import (
@@ -18,6 +19,12 @@ router = UserAPIRouter()
 
 @controller(router)
 class UserDetailsController(BaseUserController):
+    ADMIN_GRADE = "管理员"
+    ADMIN_CLASS_NAME = "老师"
+    @staticmethod
+    def _normalize_text(value: str | None) -> str:
+        return (value or "").strip()
+
     @staticmethod
     def _compute_is_complete(real_name: str | None, grade: str | None, class_name: str | None, avatar_url: str | None) -> bool:
         return bool(
@@ -36,6 +43,70 @@ class UserDetailsController(BaseUserController):
             getattr(target, "avatar_url", None),
         )
 
+    @classmethod
+    def _enforce_grade_class_one_time_lock(cls, existing, update_data: dict) -> None:
+        has_grade_input = "grade" in update_data and update_data.get("grade") is not None
+        has_class_input = "class_name" in update_data and update_data.get("class_name") is not None
+
+        old_grade = cls._normalize_text(getattr(existing, "grade", None))
+        old_class_name = cls._normalize_text(getattr(existing, "class_name", None))
+        new_grade = cls._normalize_text(update_data.get("grade"))
+        new_class_name = cls._normalize_text(update_data.get("class_name"))
+
+        if has_grade_input and old_grade and new_grade != old_grade:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="年级已填写且已锁定，不可再次修改",
+            )
+
+        if has_class_input and old_class_name and new_class_name != old_class_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="班级已填写且已锁定，不可再次修改",
+            )
+
+    def _persist_user_details(self, user_details):
+        """
+        持久化用户资料。
+        说明：
+        - 之前通过通用仓库的 update 方法更新，内部依赖 _query_one，
+          在某些带 group/household 作用域的场景下可能抛出 NoResultFound。
+        - 这里改为直接使用 ORM 会话按主键更新，避免额外作用域过滤导致查不到记录。
+        """
+        # 从 Pydantic 模型中提取字段
+        data = user_details.model_dump()
+
+        # 仅保留 ORM 上真实存在且需要更新的字段
+        allowed_keys = {
+            "real_name",
+            "grade",
+            "class_name",
+            "avatar_url",
+            "is_complete",
+        }
+
+        # 通过主键获取 ORM 实体；这里不附加 group/household 过滤，避免查不到
+        orm_obj = self.session.get(UserDetails, data["id"])
+        if not orm_obj:
+            # 理论上不应发生，如果发生则创建一条兜底记录
+            orm_obj = UserDetails(session=self.session, **{
+                "id": data["id"],
+                "user_id": data["user_id"],
+                **{k: v for k, v in data.items() if k in allowed_keys},
+            })
+            self.session.add(orm_obj)
+        else:
+            for key in allowed_keys:
+                if key in data:
+                    setattr(orm_obj, key, data[key])
+
+        orm_obj.update_complete_status()
+
+        self.session.add(orm_obj)
+        self.session.commit()
+
+        return UserDetailsOut.model_validate(orm_obj)
+
     @router.get("/me/details", response_model=UserDetailsOut | None)
     async def get_my_details(self):
         """获取当前用户的详细资料"""
@@ -47,6 +118,11 @@ class UserDetailsController(BaseUserController):
     @router.post("/me/details/complete", response_model=UserDetailsOut, status_code=201)
     async def complete_profile(self, data: CompleteProfileRequest):
         """完善个人资料（首次登录强制调用）"""
+        # 管理员的年级/班级固定为“管理员/老师”
+        if self.user.admin:
+            data.grade = self.ADMIN_GRADE
+            data.class_name = self.ADMIN_CLASS_NAME
+
         # 验证必填字段
         missing_fields = []
         if not (data.real_name or "").strip():
@@ -70,10 +146,12 @@ class UserDetailsController(BaseUserController):
         if existing:
             # 更新现有资料
             update_data = data.model_dump(exclude_unset=True)
+            if not self.user.admin:
+                self._enforce_grade_class_one_time_lock(existing, update_data)
             for key, value in update_data.items():
                 setattr(existing, key, value)
             self._sync_complete_status(existing)
-            self.repos.user_details.update(existing.id, existing)
+            self._persist_user_details(existing)
         else:
             # 创建新资料
             create_data = data.model_dump()
@@ -91,6 +169,11 @@ class UserDetailsController(BaseUserController):
     @router.put("/me/details", response_model=UserDetailsOut)
     async def update_my_details(self, data: UserDetailsUpdate):
         """更新个人资料"""
+        # 管理员的年级/班级固定为“管理员/老师”
+        if self.user.admin:
+            data.grade = self.ADMIN_GRADE
+            data.class_name = self.ADMIN_CLASS_NAME
+
         # 获取现有资料
         user_details = self.repos.user_details.get_one(self.user.id, "user_id")
         if not user_details:
@@ -121,13 +204,15 @@ class UserDetailsController(BaseUserController):
         
         # 更新字段
         update_data = data.model_dump(exclude_unset=True)
+        if not self.user.admin:
+            self._enforce_grade_class_one_time_lock(user_details, update_data)
         for key, value in update_data.items():
             if value is not None:
                 setattr(user_details, key, value)
         
         # 重新检查完整性
         self._sync_complete_status(user_details)
-        self.repos.user_details.update(user_details.id, user_details)
+        self._persist_user_details(user_details)
         
         return UserDetailsOut.model_validate(user_details)
 
@@ -182,7 +267,9 @@ class UserDetailsController(BaseUserController):
         # 自动修复历史脏数据：字段齐全但 is_complete 未同步
         if is_complete and not user_details.is_complete:
             user_details.is_complete = True
-            self.repos.user_details.update(user_details.id, user_details)
+            # 这里直接使用 session 持久化，避免仓库 update 在部分作用域下查询不到记录
+            self.session.add(user_details)
+            self.session.commit()
         
         message = None
         if not is_complete:
@@ -218,7 +305,7 @@ class UserDetailsController(BaseUserController):
             avatar_url=user_details.avatar_url
         )
 
-    @router.get("/{user_id}/details", response_model=UserDetailsOut)
+    @router.get("/{user_id}/details", response_model=UserDetailsOut | None)
     async def get_user_details_admin(self, user_id: UUID4):
         """获取用户完整资料（仅管理员）"""
         # 检查权限：只有管理员可以查看完整资料
@@ -230,9 +317,58 @@ class UserDetailsController(BaseUserController):
         
         user_details = self.repos.user_details.get_one(user_id, "user_id")
         if not user_details:
+            return None
+        
+        return UserDetailsOut.model_validate(user_details)
+
+    @router.put("/{user_id}/details", response_model=UserDetailsOut)
+    async def update_user_details_admin(self, user_id: UUID4, data: UserDetailsUpdate):
+        """管理员更新指定用户资料（年级、班级等）"""
+        if not self.user.admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="只有管理员可以修改用户资料"
+            )
+
+        target_user = self.repos.users.get_one(user_id, "id")
+        if not target_user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="用户资料不存在"
+                detail="用户不存在"
             )
-        
+
+        user_details = self.repos.user_details.get_one(user_id, "user_id")
+        update_data = data.model_dump(exclude_unset=True)
+
+        # 被修改用户是管理员时，强制写入固定年级/班级
+        if target_user.admin:
+            update_data["grade"] = self.ADMIN_GRADE
+            update_data["class_name"] = self.ADMIN_CLASS_NAME
+
+        if not user_details:
+            real_name = (update_data.get("real_name") or target_user.full_name or target_user.username or "").strip()
+            if not real_name:
+                real_name = str(target_user.email)
+
+            user_details = self.repos.user_details.create({
+                "user_id": user_id,
+                "real_name": real_name,
+                "grade": update_data.get("grade"),
+                "class_name": update_data.get("class_name"),
+                "avatar_url": update_data.get("avatar_url"),
+                "is_complete": self._compute_is_complete(
+                    real_name,
+                    update_data.get("grade"),
+                    update_data.get("class_name"),
+                    update_data.get("avatar_url"),
+                ),
+            })
+            return UserDetailsOut.model_validate(user_details)
+
+        for key, value in update_data.items():
+            if value is not None:
+                setattr(user_details, key, value)
+
+        self._sync_complete_status(user_details)
+        self._persist_user_details(user_details)
         return UserDetailsOut.model_validate(user_details)

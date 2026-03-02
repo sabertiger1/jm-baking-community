@@ -31,20 +31,18 @@
             persistent-hint
           />
           
-          <v-text-field
+          <v-select
             v-model="form.grade"
             label="年级 *"
             :rules="[rules.required]"
-            hint="如：2024级"
-            persistent-hint
+            :items="gradeOptions"
           />
           
-          <v-text-field
+          <v-select
             v-model="form.class_name"
             label="班级 *"
             :rules="[rules.required]"
-            hint="如：烘焙1班"
-            persistent-hint
+            :items="classOptions"
           />
           
           <v-file-input
@@ -117,6 +115,8 @@ const form = reactive({
   class_name: "",
   avatar_url: "",
 });
+const gradeOptions = ["23春", "23秋", "24春", "24秋", "25春", "25秋", "26春", "26秋"];
+const classOptions = ["1班", "2班", "3班", "4班", "5班", "6班", "7班", "普1", "普2", "胖专", "中巴"];
 
 const dialog = computed({
   get: () => props.modelValue,

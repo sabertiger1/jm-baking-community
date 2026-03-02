@@ -98,10 +98,14 @@
       <v-card
         variant="outlined"
         class="flex-grow-1"
+        :class="commentLevelClass(recipeComment.userId)"
       >
         <v-card-text class="pa-3 pb-0">
           <div class="d-flex align-center flex-wrap" style="gap: 8px;">
             <span>{{ recipeComment.user.fullName }} • {{ $d(Date.parse(recipeComment.createdAt), "medium") }}</span>
+            <v-chip size="x-small" variant="outlined" :class="commentLevelClass(recipeComment.userId)">
+              {{ commentLevelInfo(recipeComment.userId).levelEmoji }} {{ commentLevelInfo(recipeComment.userId).levelName }}
+            </v-chip>
             <v-rating
               :model-value="commentUserRating(recipeComment.userId)"
               readonly
@@ -150,6 +154,7 @@ const { userRatings, setRating } = useUserSelfRatings();
 const comment = ref("");
 const selectedRating = ref<number | null>(null);
 const recipeUserRatings = ref<UserRatingOut[]>([]);
+const userLevelMap = ref<Record<string, { levelKey: string; levelName: string; levelEmoji: string }>>({});
 
 const EMOJI_PRESETS = ["😀", "😋", "😍", "👍", "👏", "🎉", "🌸", "🥚", "🍞", "🍰"] as const;
 
@@ -161,7 +166,7 @@ const currentUserRating = computed<number | null>(() => {
 });
 
 const hasCommented = computed<boolean>(() => {
-  const currentUserId = user.value?.id;
+  const currentUserId = user.id;
   if (!currentUserId) {
     return false;
   }
@@ -253,17 +258,18 @@ async function submitComment() {
 
   comment.value = "";
   await loadRecipeRatings();
+  await loadCommentLevelInfo();
 }
 
 async function loadWorkPermission() {
-  if (!recipe.value?.id || !user.value?.id) {
+  if (!recipe.value?.id || !user.id) {
     hasSubmittedWork.value = false;
     return;
   }
   try {
     const result = await api.baking.getBakingRecords({
       recipeId: recipe.value.id,
-      userId: user.value.id,
+      userId: user.id,
       perPage: 1,
     });
     hasSubmittedWork.value = (result.items?.length || 0) > 0;
@@ -281,13 +287,58 @@ async function deleteComment(id: string) {
   }
 }
 
+async function loadCommentLevelInfo() {
+  const userIds = Array.from(new Set(recipe.value.comments.map(c => c.userId).filter(Boolean)));
+  if (!userIds.length) {
+    userLevelMap.value = {};
+    return;
+  }
+  try {
+    const result = await api.baking.getUsersExperience(userIds);
+    const next: Record<string, { levelKey: string; levelName: string; levelEmoji: string }> = {};
+    (result.items || []).forEach((item: any) => {
+      const uid = item.userId || item.user_id;
+      if (!uid) return;
+      next[uid] = {
+        levelKey: item.levelKey || item.level_key || "level-1",
+        levelName: item.levelName || item.level_name || "烘焙小白",
+        levelEmoji: item.levelEmoji || item.level_emoji || "🧈",
+      };
+    });
+    userLevelMap.value = next;
+  } catch (error) {
+    console.error("加载评论用户等级失败:", error);
+    userLevelMap.value = {};
+  }
+}
+
+function commentLevelInfo(userId: string) {
+  return userLevelMap.value[userId] || {
+    levelKey: "level-1",
+    levelName: "烘焙小白",
+    levelEmoji: "🧈",
+  };
+}
+
+function commentLevelClass(userId: string) {
+  return commentLevelInfo(userId).levelKey;
+}
+
 watch(
   () => recipe.value.id,
   () => {
     loadRecipeRatings();
     loadWorkPermission();
+    loadCommentLevelInfo();
   },
   { immediate: true },
+);
+
+watch(
+  () => recipe.value.comments.map(c => c.userId).join(","),
+  () => {
+    loadCommentLevelInfo();
+  },
 );
 
 onMounted(() => {
@@ -310,3 +361,27 @@ function handleWorkSubmitted(event: Event) {
   loadWorkPermission();
 }
 </script>
+
+<style scoped>
+.level-1 { color: #8f8f8f; background: #fff; }
+.level-2 { color: #b8860b; border-color: #e8cf8f !important; background: #fffdf2; }
+.level-3 { color: #c06d00; border-color: #f0c56b !important; border-width: 2px; background: #fff8e8; }
+.level-4 { color: #d85b9b; border-color: #f3b5d4 !important; border-width: 2px; background: #fff5fa; }
+.level-5 { color: #6e4a2f; border-color: #6e4a2f !important; box-shadow: 0 0 8px rgba(110, 74, 47, 0.25); }
+.level-6 { color: #4a2a1a; border-color: #6b3f27 !important; border-width: 2px; background: linear-gradient(135deg, #fff4e8, #f2e2d6); }
+.level-7 { color: #b13a8f; border-color: #b13a8f !important; border-width: 2px; box-shadow: 0 0 10px rgba(177, 58, 143, 0.35); }
+.level-8 {
+  color: #b8860b;
+  border-color: #f2c94c !important;
+  border-width: 2px;
+  box-shadow: 0 0 12px rgba(242, 201, 76, 0.5);
+  background: linear-gradient(90deg, rgba(255, 248, 220, 0.95), rgba(255, 255, 255, 0.95), rgba(255, 248, 220, 0.95));
+  background-size: 200% 100%;
+  animation: king-shine 2.2s linear infinite;
+}
+
+@keyframes king-shine {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+</style>

@@ -1,7 +1,7 @@
 """用户烘焙作品记录模型"""
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Integer, String, Text, orm
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, orm
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -36,6 +36,7 @@ class UserBakingRecord(SqlAlchemyBase, BaseMixins):
     # 统计信息（冗余字段，提高查询性能）
     flower_count: Mapped[int] = mapped_column(Integer, default=0, index=True)  # 鲜花数
     egg_count: Mapped[int] = mapped_column(Integer, default=0, index=True)  # 鸡蛋数
+    is_excellent: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)  # 是否优秀作品
     
     # 关联信息（通过association_proxy获取）
     group_id: AssociationProxy[GUID] = association_proxy("recipe", "group_id")

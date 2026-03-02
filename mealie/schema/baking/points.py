@@ -38,3 +38,48 @@ class CheckinResponse(MealieModel):
     total_points: int = Field(description="当前总积分")
     consecutive_days: int = Field(description="连续签到天数")
     message: str | None = None
+
+
+class CheckinHistoryResponse(MealieModel):
+    """签到历史响应"""
+
+    checkin_dates: list[str] = Field(default_factory=list, description="签到日期列表 YYYY-MM-DD")
+    daily_points: int = Field(default=10, description="每日签到积分")
+
+
+class UserExperienceOut(MealieModel):
+    """用户经验与等级"""
+
+    user_id: UUID4
+    total_exp: int = Field(default=1, description="总经验")
+    level_key: str = Field(default="level-1", description="等级键")
+    level_name: str = Field(default="烘焙小白", description="等级名称")
+    level_emoji: str = Field(default="🧈", description="等级表情")
+    current_level_min_exp: int = Field(default=0, description="当前等级起始经验")
+    next_level_min_exp: int | None = Field(default=None, description="下一等级起始经验")
+    next_level_name: str | None = Field(default=None, description="下一等级名称")
+
+
+class UserExperienceBatchOut(MealieModel):
+    items: list[UserExperienceOut]
+
+
+class UserExperienceUpdateIn(MealieModel):
+    total_exp: int = Field(..., ge=1, description="手动设置的总经验（最小为1）")
+
+
+class UserExperienceHistoryItem(MealieModel):
+    id: UUID4
+    source: str
+    exp_delta: int
+    total_exp_after: int
+    note: str | None = None
+    created_at: datetime
+
+
+class UserExperienceHistoryOut(MealieModel):
+    page: int = 1
+    per_page: int = 20
+    total: int = 0
+    pages: int = 0
+    items: list[UserExperienceHistoryItem]

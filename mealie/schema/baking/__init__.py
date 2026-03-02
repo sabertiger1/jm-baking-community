@@ -4,7 +4,18 @@ from .baking_records import (
     BakingRecordUpdate,
 )
 from .classes import UserClassCreate, UserClassOut, UserClassUpdate
-from .points import CheckinRequest, CheckinResponse, PointsOut, PointsUpdate
+from .points import (
+    CheckinHistoryResponse,
+    CheckinRequest,
+    CheckinResponse,
+    PointsOut,
+    PointsUpdate,
+    UserExperienceBatchOut,
+    UserExperienceHistoryItem,
+    UserExperienceHistoryOut,
+    UserExperienceOut,
+    UserExperienceUpdateIn,
+)
 from .ratings import RecipeRatingCreate, RecipeRatingOut, RecipeRatingUpdate
 from .votes import VoteRequest, VoteResponse, VoteType, WorkVoteCreate, WorkVoteOut
 
@@ -23,6 +34,12 @@ __all__ = [
     "PointsUpdate",
     "CheckinRequest",
     "CheckinResponse",
+    "CheckinHistoryResponse",
+    "UserExperienceOut",
+    "UserExperienceUpdateIn",
+    "UserExperienceBatchOut",
+    "UserExperienceHistoryItem",
+    "UserExperienceHistoryOut",
     "WorkVoteCreate",
     "WorkVoteOut",
     "VoteType",

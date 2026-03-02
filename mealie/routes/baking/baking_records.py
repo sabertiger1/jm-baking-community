@@ -3,12 +3,13 @@ from datetime import datetime
 
 from fastapi import Depends, HTTPException, Query, status
 from pydantic import UUID4
-from sqlalchemy import and_, desc, distinct, func, select
+from sqlalchemy import and_, desc, distinct, func, or_, select
 from sqlalchemy.orm import joinedload
 
 from mealie.core.dependencies.dependencies import require_complete_profile
 from mealie.db.models.baking.baking_records import UserBakingRecord
 from mealie.db.models.baking.votes import VoteType, WorkVote
+from mealie.db.models.recipe.recipe import RecipeModel
 from mealie.db.models.users import User
 from mealie.db.models.users.user_details import UserDetails
 from mealie.routes._base import BaseUserController, controller
@@ -20,6 +21,13 @@ from mealie.schema.baking.baking_records import (
     BakingRecordUpdate,
 )
 from mealie.schema.response.pagination import PaginationBase
+from mealie.services.baking.experience import (
+    EXP_REWARD,
+    EXP_SOURCE_SUBMIT_WORK,
+    EXP_SOURCE_WORK_EXCELLENT,
+    add_experience,
+    get_user_experience_profile,
+)
 
 router = UserAPIRouter()
 
@@ -61,8 +69,16 @@ class BakingRecordsController(BaseUserController):
         record_data["user_id"] = self.user.id
         record_data["flower_count"] = 0
         record_data["egg_count"] = 0
+        record_data["is_excellent"] = False
 
         record = self.repos.baking_records.create(record_data)
+        add_experience(
+            self.session,
+            self.user.id,
+            EXP_REWARD[EXP_SOURCE_SUBMIT_WORK],
+            source=EXP_SOURCE_SUBMIT_WORK,
+        )
+        self.session.commit()
         return self._enrich_baking_record(record)
 
     @router.get("/grades", response_model=list[str])
@@ -115,6 +131,35 @@ class BakingRecordsController(BaseUserController):
         updated = self.repos.baking_records.update(work_id, data.model_dump(exclude_unset=True))
         return self._enrich_baking_record(updated)
 
+    @router.put("/{work_id}/excellent", response_model=BakingRecordOut)
+    async def mark_work_excellent(self, work_id: UUID4):
+        """标记优秀作品（管理员）并奖励作者经验"""
+        if not self.user.admin:
+            raise HTTPException(status_code=403, detail="仅管理员可标记优秀作品")
+
+        # 使用 ORM 模型进行更新，避免对 Pydantic 实例执行 session 刷新
+        orm_record = (
+            self.session.query(UserBakingRecord)
+            .filter(UserBakingRecord.id == work_id)
+            .first()
+        )
+        if not orm_record:
+            raise HTTPException(status_code=404, detail="作品不存在")
+
+        if not getattr(orm_record, "is_excellent", False):
+            add_experience(
+                self.session,
+                orm_record.user_id,
+                EXP_REWARD[EXP_SOURCE_WORK_EXCELLENT],
+                source=EXP_SOURCE_WORK_EXCELLENT,
+            )
+            orm_record.is_excellent = True
+            self.session.commit()
+            self.session.refresh(orm_record)
+
+        # 统一走 ORM -> Pydantic 的富化流程
+        return self._enrich_baking_record_model(orm_record)
+
     @router.get("/", response_model=BakingRecordPagination)
     async def get_baking_records(
         self,
@@ -122,6 +167,7 @@ class BakingRecordsController(BaseUserController):
         user_id: UUID4 | None = Query(None, description="用户ID"),
         grade: str | None = Query(None, description="年级"),
         class_name: str | None = Query(None, description="班级名称"),
+        keyword: str | None = Query(None, description="关键词（配方名/简介/作品心得）"),
         sort_by: str = Query("created_at", description="排序字段"),
         order: str = Query("desc", description="排序方向"),
         page: int = Query(1, ge=1),
@@ -140,6 +186,17 @@ class BakingRecordsController(BaseUserController):
             filters.append(UserBakingRecord.recipe_id == recipe_id)
         if user_id:
             filters.append(UserBakingRecord.user_id == user_id)
+
+        if keyword:
+            like_pattern = f"%{keyword.strip()}%"
+            query = query.join(RecipeModel, UserBakingRecord.recipe_id == RecipeModel.id)
+            filters.append(
+                or_(
+                    RecipeModel.name.ilike(like_pattern),
+                    RecipeModel.description.ilike(like_pattern),
+                    UserBakingRecord.notes.ilike(like_pattern),
+                )
+            )
 
         # 按年级/班级筛选（通过 user_details 关联）
         if grade or class_name:
@@ -196,6 +253,36 @@ class BakingRecordsController(BaseUserController):
         if not record:
             raise HTTPException(status_code=404, detail="作品不存在")
 
+        # 为确保统计数据与实际投票记录一致，这里根据 WorkVote 表动态校准鲜花/鸡蛋总数
+        flower_total = (
+            self.session.query(func.count(WorkVote.id))
+            .filter(
+                and_(
+                    WorkVote.work_id == record.id,
+                    WorkVote.vote_type == VoteType.FLOWER,
+                )
+            )
+            .scalar()
+            or 0
+        )
+        egg_total = (
+            self.session.query(func.count(WorkVote.id))
+            .filter(
+                and_(
+                    WorkVote.work_id == record.id,
+                    WorkVote.vote_type == VoteType.EGG,
+                )
+            )
+            .scalar()
+            or 0
+        )
+
+        # 如有不一致则同步到冗余字段，确保排序/聚合正确
+        if record.flower_count != flower_total or record.egg_count != egg_total:
+            record.flower_count = flower_total
+            record.egg_count = egg_total
+            self.session.commit()
+
         # 获取用户详细信息
         user_details = self.session.query(UserDetails).filter(UserDetails.user_id == record.user_id).first()
 
@@ -251,9 +338,12 @@ class BakingRecordsController(BaseUserController):
             "class_name": user_details.class_name if user_details else None,
             "group_name": self._get_user_group_name(record.user_id),
             "recipe_name": recipe_name,
+            "is_excellent": bool(getattr(record, "is_excellent", False)),
             "has_flowered": has_flowered,
             "has_egged": has_egged,
         }
+        exp_profile = get_user_experience_profile(self.session, record.user_id)
+        record_dict.update(exp_profile)
 
         return BakingRecordOut(**record_dict)
 

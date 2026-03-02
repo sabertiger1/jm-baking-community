@@ -64,4 +64,8 @@ class ReceivedVoteRecord(MealieModel):
 
 
 class ReceivedVoteRecords(MealieModel):
+    page: int = 1
+    per_page: int = 20
+    total: int = 0
+    pages: int = 0
     items: list[ReceivedVoteRecord]

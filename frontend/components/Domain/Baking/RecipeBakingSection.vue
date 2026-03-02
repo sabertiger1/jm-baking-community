@@ -64,12 +64,18 @@
           <v-col
             v-for="work in recentWorks"
             :key="work.id"
-            cols="12"
+            :cols="isMobile ? 4 : 12"
             sm="6"
             md="4"
             lg="3"
           >
-            <BakingWorkCard :work="work" />
+            <BakingWorkCard
+              :work="work"
+              :show-excellent-action="!!auth.user.value?.admin"
+              :excellent-loading="markExcellentLoadingId === work.id"
+              @vote="handleVote"
+              @mark-excellent="handleMarkExcellent"
+            />
           </v-col>
         </v-row>
         <v-empty-state v-else :title="$t('baking.no-works')">
@@ -97,6 +103,7 @@
 <script setup lang="ts">
 import { useUserApi } from "~/composables/api/api-client";
 import { useMealieAuth } from "~/composables/use-mealie-auth";
+import { alert } from "~/composables/use-toast";
 import type { Recipe } from "~/lib/api/types/recipe";
 import BakingWorkCard from "./BakingWorkCard.vue";
 import BakingWorkSubmitDialog from "./BakingWorkSubmitDialog.vue";
@@ -108,6 +115,8 @@ const props = defineProps<{
 const api = useUserApi();
 const auth = useMealieAuth();
 const { t: $t } = useI18n();
+const display = useDisplay();
+const isMobile = computed(() => display.smAndDown.value);
 
 const recentWorks = ref<any[]>([]);
 const myWork = ref<any>(null); // 我的作品
@@ -126,24 +135,71 @@ async function checkProfileComplete() {
 
 const showRatingDialog = ref(false);
 const showSubmitDialog = ref(false);
+const markExcellentLoadingId = ref<string>("");
 
 async function loadRecentWorks() {
   try {
     const result = await api.baking.getBakingRecords({
       recipeId: props.recipe.id,
-      perPage: 4,
+      sortBy: "flower_count",
+      order: "desc",
+      perPage: 6,
     });
     recentWorks.value = result.items;
     
     // 检查当前用户是否已提交作品
     if (auth.user.value) {
-      const myWorkRecord = result.items.find(
-        (work: any) => work.userId === auth.user.value?.id
-      );
-      myWork.value = myWorkRecord || null;
+      const myWorkResult = await api.baking.getBakingRecords({
+        recipeId: props.recipe.id,
+        userId: auth.user.value.id,
+        perPage: 1,
+      });
+      myWork.value = myWorkResult.items[0] || null;
     }
   } catch (error) {
     console.error("加载作品失败:", error);
+  }
+}
+
+async function handleVote(workId: string, voteType: "flower" | "egg") {
+  const voteLabel = voteType === "flower" ? "送花 🌸" : "送鸡蛋 🥚";
+  const confirmed = window.confirm(`确认${voteLabel}吗？本次投票将扣除 5 积分。`);
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    const result = await api.baking.vote({ workId, voteType });
+    alert.success(result.message || "投票成功");
+    await loadRecentWorks();
+  } catch (error: any) {
+    console.error("投票失败:", error);
+    alert.warning(error?.response?.data?.detail || "投票失败，请稍后重试");
+  }
+}
+
+async function handleMarkExcellent(workId: string) {
+  if (markExcellentLoadingId.value) {
+    return;
+  }
+  const confirmed = window.confirm("确认将该作品设为精华吗？作者将一次性获得 +30 经验。");
+  if (!confirmed) {
+    return;
+  }
+  try {
+    markExcellentLoadingId.value = workId;
+    await api.baking.markBakingRecordExcellent(workId);
+    const target = recentWorks.value.find((w: any) => w.id === workId);
+    if (target) {
+      target.isExcellent = true;
+    }
+    alert.success("已设为精华，作者已获得 +30 经验");
+    await loadRecentWorks();
+  } catch (error: any) {
+    console.error("设为精华失败:", error);
+    alert.warning(error?.response?.data?.detail || "设为精华失败，请稍后重试");
+  } finally {
+    markExcellentLoadingId.value = "";
   }
 }
 

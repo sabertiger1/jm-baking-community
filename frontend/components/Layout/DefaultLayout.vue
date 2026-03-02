@@ -1,5 +1,5 @@
 <template>
-  <v-app dark>
+  <v-app dark :class="{ 'cake-king-app': isCakeKingTheme }">
     <TheSnackbar />
 
     <AppHeader>
@@ -100,6 +100,7 @@ import { useLoggedInState } from "~/composables/use-logged-in-state";
 import type { SideBarLink } from "~/types/application-types";
 import { useCookbookStore, usePublicCookbookStore } from "~/composables/store/use-cookbook-store";
 import type { ReadCookBook } from "~/lib/api/types/cookbook";
+import { useCakeKingTheme } from "~/composables/baking/use-cake-king-theme";
 
 export default defineNuxtComponent({
   setup() {
@@ -107,6 +108,7 @@ export default defineNuxtComponent({
     const { $appInfo, $globals } = useNuxtApp();
     const display = useDisplay();
     const auth = useMealieAuth();
+    const { isCakeKingTheme } = useCakeKingTheme();
     const { isOwnGroup } = useLoggedInState();
 
     const route = useRoute();
@@ -326,7 +328,23 @@ export default defineNuxtComponent({
       languageDialog,
       sidebar,
       canCreateRecipe,
+      isCakeKingTheme,
     };
   },
 });
 </script>
+
+<style>
+.cake-king-theme .cake-king-app {
+  background:
+    radial-gradient(circle at 10% 10%, rgba(255, 216, 102, 0.14), transparent 42%),
+    radial-gradient(circle at 90% 0%, rgba(255, 232, 160, 0.12), transparent 48%),
+    linear-gradient(180deg, rgba(255, 250, 235, 0.04), rgba(0, 0, 0, 0));
+}
+
+.cake-king-theme .v-toolbar,
+.cake-king-theme .v-card {
+  border-color: rgba(242, 201, 76, 0.35) !important;
+  box-shadow: 0 0 0 1px rgba(242, 201, 76, 0.16), 0 6px 20px rgba(242, 201, 76, 0.14);
+}
+</style>

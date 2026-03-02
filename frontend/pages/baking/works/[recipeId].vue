@@ -6,30 +6,33 @@
     <v-card class="mb-4">
       <v-card-text>
         <v-row>
-          <v-col cols="12" md="4">
+          <v-col :cols="isMobile ? 4 : 12" md="4">
             <v-select
               v-model="filters.grade"
               :items="gradeList"
               label="按年级筛选"
               clearable
               prepend-icon="$globals.icons.school"
+              density="compact"
             />
           </v-col>
-          <v-col cols="12" md="4">
+          <v-col :cols="isMobile ? 4 : 12" md="4">
             <v-select
               v-model="filters.className"
               :items="classList"
               label="按班级筛选"
               clearable
               prepend-icon="$globals.icons.account"
+              density="compact"
             />
           </v-col>
-          <v-col cols="12" md="4">
+          <v-col :cols="isMobile ? 4 : 12" md="4">
             <v-select
               v-model="sortBy"
               :items="sortOptions"
               label="排序方式"
               prepend-icon="$globals.icons.sort"
+              density="compact"
             />
           </v-col>
         </v-row>
@@ -41,7 +44,7 @@
 
     <!-- 作品瀑布流 -->
     <v-row v-if="loading">
-      <v-col v-for="i in 6" :key="i" cols="12" sm="6" md="4" lg="3">
+      <v-col v-for="i in 6" :key="i" :cols="isMobile ? 4 : 12" sm="6" md="4" lg="3">
         <v-skeleton-loader type="image, article" />
       </v-col>
     </v-row>
@@ -50,15 +53,18 @@
       <v-col
         v-for="work in works"
         :key="work.id"
-        cols="12"
+        :cols="isMobile ? 4 : 12"
         sm="6"
         md="4"
         lg="3"
       >
         <BakingWorkCard
           :work="work"
+          :show-excellent-action="!!auth.user.value?.admin"
+          :excellent-loading="markExcellentLoadingId === work.id"
           @vote="handleVote"
           @cancel-vote="handleCancelVote"
+          @mark-excellent="handleMarkExcellent"
         />
       </v-col>
     </v-row>
@@ -84,8 +90,10 @@
 <script setup lang="ts">
 import { useRoute } from "vue-router";
 import { useUserApi } from "~/composables/api/api-client";
+import { useMealieAuth } from "~/composables/use-mealie-auth";
 import type { BakingRecord } from "~/lib/api/user/baking";
 import BakingWorkCard from "~/components/Domain/Baking/BakingWorkCard.vue";
+import { alert } from "~/composables/use-toast";
 
 definePageMeta({
   layout: "default",
@@ -94,6 +102,7 @@ definePageMeta({
 const route = useRoute();
 const router = useRouter();
 const api = useUserApi();
+const auth = useMealieAuth();
 const display = useDisplay();
 const isMobile = computed(() => display.smAndDown.value);
 const recipeId = computed(() => route.params.recipeId as string);
@@ -123,7 +132,7 @@ async function loadRecipeName() {
 const loading = ref(false);
 const works = ref<BakingRecord[]>([]);
 const page = ref(1);
-const perPage = 20;
+const perPage = 12;
 const pagination = ref({ total: 0, pages: 0 });
 
 const filters = reactive({
@@ -141,6 +150,7 @@ const sortOptions = [
 const gradeList = ref<string[]>([]);
 const classList = ref<string[]>([]);
 const resolvedRecipeId = ref<string>("");
+const markExcellentLoadingId = ref<string>("");
 
 async function loadWorks() {
   loading.value = true;
@@ -189,11 +199,12 @@ async function handleVote(workId: string, voteType: "flower" | "egg") {
   }
 
   try {
-    await api.baking.vote({ workId, voteType });
+    const result = await api.baking.vote({ workId, voteType });
+    alert.success(result.message || "投票成功");
     await loadWorks();
   } catch (error: any) {
     console.error("投票失败:", error);
-    // 显示错误提示
+    alert.warning(error?.response?.data?.detail || "投票失败，请稍后重试");
   }
 }
 
@@ -203,6 +214,31 @@ async function handleCancelVote(workId: string, voteType: string) {
     await loadWorks();
   } catch (error) {
     console.error("取消投票失败:", error);
+  }
+}
+
+async function handleMarkExcellent(workId: string) {
+  if (markExcellentLoadingId.value) {
+    return;
+  }
+  const confirmed = window.confirm("确认将该作品设为精华吗？作者将一次性获得 +30 经验。");
+  if (!confirmed) {
+    return;
+  }
+  try {
+    markExcellentLoadingId.value = workId;
+    await api.baking.markBakingRecordExcellent(workId);
+    const target = works.value.find(work => work.id === workId);
+    if (target) {
+      target.isExcellent = true;
+    }
+    alert.success("已设为精华，作者已获得 +30 经验");
+    await loadWorks();
+  } catch (error: any) {
+    console.error("设为精华失败:", error);
+    alert.warning(error?.response?.data?.detail || "设为精华失败，请稍后重试");
+  } finally {
+    markExcellentLoadingId.value = "";
   }
 }
 

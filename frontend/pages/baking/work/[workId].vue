@@ -211,7 +211,8 @@ async function handleVote(type: "flower" | "egg") {
     return;
   }
   try {
-    await api.baking.vote({ workId: work.value.id, voteType: type });
+    const result = await api.baking.vote({ workId: work.value.id, voteType: type });
+    alert.success(result.message || "投票成功");
     await loadWork();
   } catch (error: any) {
     console.error("投票失败:", error);

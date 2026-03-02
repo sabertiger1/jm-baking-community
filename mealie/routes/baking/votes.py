@@ -11,6 +11,7 @@ from mealie.db.models.baking.votes import VoteType, WorkVote
 from mealie.routes._base import BaseUserController, controller
 from mealie.routes._base.routers import UserAPIRouter
 from mealie.schema.baking.votes import ReceivedVoteRecord, ReceivedVoteRecords, VoteRequest, VoteResponse
+from mealie.services.baking.experience import EXP_REWARD, EXP_SOURCE_RECEIVE_FLOWER, add_experience
 
 router = UserAPIRouter()
 
@@ -23,9 +24,10 @@ class VotesController(BaseUserController):
     async def get_received_votes(
         self,
         vote_type: VoteType | None = Query(None, description="过滤投票类型 flower/egg"),
-        limit: int = Query(100, ge=1, le=500),
+        page: int = Query(1, ge=1),
+        per_page: int = Query(20, ge=1, le=100),
     ):
-        """获取当前用户收到的鲜花/鸡蛋记录（谁在什么时间送的）"""
+        """获取当前用户收到的鲜花/鸡蛋记录（分页）"""
         query = (
             self.session.query(WorkVote)
             .join(UserBakingRecord, WorkVote.work_id == UserBakingRecord.id)
@@ -39,7 +41,9 @@ class VotesController(BaseUserController):
         if vote_type is not None:
             query = query.filter(WorkVote.vote_type == vote_type)
 
-        votes = query.limit(limit).all()
+        total = query.count()
+        offset = (page - 1) * per_page
+        votes = query.offset(offset).limit(per_page).all()
         items = [
             ReceivedVoteRecord(
                 vote_id=vote.id,
@@ -53,7 +57,14 @@ class VotesController(BaseUserController):
             )
             for vote in votes
         ]
-        return ReceivedVoteRecords(items=items)
+        pages = (total + per_page - 1) // per_page if total else 0
+        return ReceivedVoteRecords(
+            page=page,
+            per_page=per_page,
+            total=total,
+            pages=pages,
+            items=items,
+        )
 
     @router.post("/", response_model=VoteResponse, dependencies=[Depends(require_complete_profile)])
     async def vote(self, data: VoteRequest):
@@ -88,6 +99,7 @@ class VotesController(BaseUserController):
         )
         if not user_points:
             user_points = UserPoints(
+                session=self.session,
                 user_id=self.user.id,
                 total_points=0,
                 consecutive_days=0,
@@ -103,6 +115,7 @@ class VotesController(BaseUserController):
 
         # 4. 创建投票记录
         vote = WorkVote(
+            session=self.session,
             work_id=data.work_id,
             user_id=self.user.id,
             vote_type=data.vote_type,
@@ -112,6 +125,12 @@ class VotesController(BaseUserController):
         # 5. 更新作品的鲜花/鸡蛋数
         if data.vote_type == VoteType.FLOWER:
             work.flower_count += 1
+            add_experience(
+                self.session,
+                work.user_id,
+                EXP_REWARD[EXP_SOURCE_RECEIVE_FLOWER],
+                source=EXP_SOURCE_RECEIVE_FLOWER,
+            )
         elif data.vote_type == VoteType.EGG:
             work.egg_count += 1
 
@@ -168,6 +187,7 @@ class VotesController(BaseUserController):
         )
         if not user_points:
             user_points = UserPoints(
+                session=self.session,
                 user_id=self.user.id,
                 total_points=0,
                 consecutive_days=0,

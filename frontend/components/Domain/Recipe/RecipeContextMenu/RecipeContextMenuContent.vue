@@ -305,10 +305,15 @@ const canDelete = computed(() => {
   const recipe = recipeRef.value;
   return user && recipe && (user.admin || user.id === recipe.userId);
 });
+const isAdmin = computed(() => !!auth.user.value?.admin);
+const adminOnlyActions = new Set(["download", "mealplanner", "shoppingList", "share"]);
 
 // Get Default Menu Items Specified in Props
 for (const [key, value] of Object.entries(props.useItems)) {
   if (!value) continue;
+
+  // Hide some actions for non-admin users
+  if (adminOnlyActions.has(key) && !isAdmin.value) continue;
 
   // Skip delete if not allowed
   if (key === "delete" && !canDelete.value) continue;

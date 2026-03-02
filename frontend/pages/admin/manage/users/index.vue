@@ -53,7 +53,7 @@
       </v-toolbar>
       <v-data-table
         :headers="headers"
-        :items="users || []"
+        :items="tableUsers || []"
         item-key="id"
         class="elevation-0"
         elevation="0"
@@ -94,7 +94,7 @@
 </template>
 
 <script lang="ts">
-import { useAdminApi } from "~/composables/api";
+import { useAdminApi, useUserApi } from "~/composables/api";
 import { alert } from "~/composables/use-toast";
 import { useUser, useAllUsers } from "~/composables/use-user";
 import type { UserOut } from "~/lib/api/types/user";
@@ -110,6 +110,7 @@ export default defineNuxtComponent({
     });
 
     const api = useAdminApi();
+    const userApi = useUserApi();
     const refUserDialog = ref();
     const inviteDialog = ref();
     const auth = useMealieAuth();
@@ -141,9 +142,55 @@ export default defineNuxtComponent({
       households: [],
       sendTo: "",
     });
+    const userDetailsMap = ref<Record<string, { grade: string; className: string }>>({});
+    const userExperienceMap = ref<Record<string, number>>({});
 
     const { users, refreshAllUsers } = useAllUsers();
     const { loading, deleteUser: deleteUserMixin } = useUser(refreshAllUsers);
+
+    async function loadUserDetailsForTable() {
+      const list = users.value || [];
+      const entries = await Promise.all(
+        list.map(async (u) => {
+          try {
+            const { data } = await userApi.users.getUserDetailsAdmin(u.id);
+            return [
+              u.id,
+              {
+                grade: data?.grade || "-",
+                className: data?.className || "-",
+              },
+            ] as const;
+          } catch {
+            return [
+              u.id,
+              {
+                grade: "-",
+                className: "-",
+              },
+            ] as const;
+          }
+        }),
+      );
+      userDetailsMap.value = Object.fromEntries(entries);
+    }
+
+    async function loadUserExperienceForTable() {
+      const list = users.value || [];
+      if (!list.length) {
+        userExperienceMap.value = {};
+        return;
+      }
+
+      try {
+        const result = await userApi.baking.getUsersExperience(list.map(u => u.id));
+        userExperienceMap.value = Object.fromEntries(
+          (result.items || []).map(item => [item.userId, item.totalExp ?? 1]),
+        );
+      } catch {
+        userExperienceMap.value = Object.fromEntries(list.map(u => [u.id, 1]));
+      }
+    }
 
     function deleteUser(id: string) {
       deleteUserMixin(id);
@@ -169,12 +216,25 @@ export default defineNuxtComponent({
       { title: i18n.t("user.username"), value: "username" },
       { title: i18n.t("user.full-name"), value: "fullName" },
       { title: i18n.t("user.email"), value: "email" },
+      { title: "年级", value: "grade" },
+      { title: "班级", value: "className" },
+      { title: "经验值", value: "totalExp" },
       { title: i18n.t("group.group"), value: "group" },
       { title: i18n.t("household.household"), value: "household" },
       { title: i18n.t("user.auth-method"), value: "authMethod" },
       { title: i18n.t("user.admin"), value: "admin" },
       { title: i18n.t("general.delete"), value: "actions", sortable: false, align: "center" },
     ];
+
+    const tableUsers = computed(() => {
+      const list = users.value || [];
+      return list.map(u => ({
+        ...u,
+        grade: userDetailsMap.value[u.id]?.grade || "-",
+        className: userDetailsMap.value[u.id]?.className || "-",
+        totalExp: userExperienceMap.value[u.id] ?? 1,
+      }));
+    });
 
     async function unlockAllUsers(): Promise<void> {
       const { data } = await api.users.unlockAllUsers(true);
@@ -191,6 +251,15 @@ export default defineNuxtComponent({
       title: i18n.t("sidebar.manage-users"),
     });
 
+    watch(
+      () => users.value,
+      () => {
+        loadUserDetailsForTable();
+        loadUserExperienceForTable();
+      },
+      { immediate: true },
+    );
+
     return {
       isUserOwnAccount,
       unlockAllUsers,
@@ -201,6 +270,7 @@ export default defineNuxtComponent({
       refUserDialog,
       inviteDialog,
       users,
+      tableUsers,
       user,
       handleRowClick,
       ACTIONS_OPTIONS,

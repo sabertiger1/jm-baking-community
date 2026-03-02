@@ -17,7 +17,16 @@ from .._model_base import BaseMixins, SqlAlchemyBase
 from .user_to_recipe import UserToRecipe
 
 if TYPE_CHECKING:
-    from ..baking import RecipeRating, UserBakingRecord, UserClass, UserPoints, WorkVote
+    from ..baking import (
+        RecipeRating,
+        UserBakingRecord,
+        UserCheckinHistory,
+        UserClass,
+        UserExperience,
+        UserExperienceHistory,
+        UserPoints,
+        WorkVote,
+    )
     from ..group import Group
     from ..household import Household
     from ..household.mealplan import GroupMealPlan
@@ -129,6 +138,25 @@ class User(SqlAlchemyBase, BaseMixins):
     )
     points: Mapped["UserPoints"] = orm.relationship(
         "UserPoints", back_populates="user", uselist=False, cascade="all, delete, delete-orphan", foreign_keys="UserPoints.user_id"
+    )
+    experience: Mapped["UserExperience"] = orm.relationship(
+        "UserExperience",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete, delete-orphan",
+        foreign_keys="UserExperience.user_id",
+    )
+    experience_history: Mapped[list["UserExperienceHistory"]] = orm.relationship(
+        "UserExperienceHistory",
+        back_populates="user",
+        cascade="all, delete, delete-orphan",
+        foreign_keys="UserExperienceHistory.user_id",
+    )
+    checkin_history: Mapped[list["UserCheckinHistory"]] = orm.relationship(
+        "UserCheckinHistory",
+        back_populates="user",
+        cascade="all, delete, delete-orphan",
+        foreign_keys="UserCheckinHistory.user_id",
     )
     user_class: Mapped["UserClass"] = orm.relationship(
         "UserClass", back_populates="user", uselist=False, cascade="all, delete, delete-orphan", foreign_keys="UserClass.user_id"

@@ -49,6 +49,7 @@
                 <v-col cols="6">
                   <v-menu
                     v-model="datePickerMenu"
+                    :disabled="!canSelectMadeDate"
                     :close-on-content-click="false"
                     transition="scale-transition"
                     offset-y
@@ -64,6 +65,7 @@
                     </template>
                     <v-date-picker
                       v-model="newTimelineEventTimestamp"
+                      :disabled="!canSelectMadeDate"
                       hide-header
                       :first-day-of-week="firstDayOfWeek"
                       :local="$i18n.locale"
@@ -108,7 +110,7 @@
       </BaseDialog>
     </div>
     <div>
-      <div v-if="lastMadeReady" class="d-flex justify-center flex-wrap">
+      <div v-if="lastMadeReady && !hasSubmittedWork" class="d-flex justify-center flex-wrap">
         <v-row no-gutters class="d-flex flex-wrap align-center" style="font-size: larger">
           <v-tooltip location="bottom">
             <template #activator="{ props: tooltipProps }">
@@ -136,6 +138,14 @@
             <span>{{ $t("recipe.made-this") }}</span>
           </v-tooltip>
         </v-row>
+      </div>
+      <div v-else-if="lastMadeReady && hasSubmittedWork" class="d-flex justify-center flex-wrap">
+        <v-chip color="success" variant="tonal" size="large">
+          <v-icon start>
+            {{ $globals.icons.check }}
+          </v-icon>
+          已提交作品
+        </v-chip>
       </div>
     </div>
   </div>
@@ -176,9 +186,38 @@ const newTimelineEventTimestamp = ref<Date>(new Date());
 const newTimelineEventTimestampString = computed(() => {
   return formatISO(newTimelineEventTimestamp.value, { representation: "date" });
 });
+const canSelectMadeDate = computed(() => !!auth.user.value?.admin);
 
 const lastMade = ref(props.recipe.lastMade);
 const lastMadeReady = ref(false);
+const hasSubmittedWork = ref(false);
+
+async function loadSubmissionStatus() {
+  if (!props.recipe?.id || !auth.user.value?.id) {
+    hasSubmittedWork.value = false;
+    return;
+  }
+  try {
+    const result = await userApi.baking.getBakingRecords({
+      recipeId: props.recipe.id,
+      userId: auth.user.value.id,
+      perPage: 1,
+    });
+    hasSubmittedWork.value = (result.items?.length || 0) > 0;
+  } catch (error) {
+    console.error("Failed to load baking submission status:", error);
+    hasSubmittedWork.value = false;
+  }
+}
+
+function handleWorkSubmitted(event: Event) {
+  const customEvent = event as CustomEvent<{ recipeId?: string }>;
+  if (customEvent.detail?.recipeId !== props.recipe.id) {
+    return;
+  }
+  hasSubmittedWork.value = true;
+}
+
 onMounted(async () => {
   if (!auth.user?.value?.householdSlug) {
     lastMade.value = props.recipe.lastMade;
@@ -188,7 +227,18 @@ onMounted(async () => {
     lastMade.value = data?.lastMade;
   }
 
+  await loadSubmissionStatus();
   lastMadeReady.value = true;
+
+  if (process.client) {
+    window.addEventListener("baking-work-submitted", handleWorkSubmitted as EventListener);
+  }
+});
+
+onBeforeUnmount(() => {
+  if (process.client) {
+    window.removeEventListener("baking-work-submitted", handleWorkSubmitted as EventListener);
+  }
 });
 
 const childRecipes = computed(() => {
@@ -304,7 +354,11 @@ function resetMadeThisForm() {
 }
 
 async function createTimelineEvent() {
-  if (!(newTimelineEventTimestampString.value && props.recipe?.id && props.recipe?.slug)) {
+  const effectiveDate = canSelectMadeDate.value
+    ? newTimelineEventTimestampString.value
+    : formatISO(new Date(), { representation: "date" });
+
+  if (!(effectiveDate && props.recipe?.id && props.recipe?.slug)) {
     return;
   }
   try {
@@ -339,7 +393,7 @@ async function createTimelineEvent() {
 
   // the user only selects the date, so we set the time to end of day local time
   // we choose the end of day so it always comes after "new recipe" events
-  newTimelineEvent.value.timestamp = new Date(newTimelineEventTimestampString.value + "T23:59:59").toISOString();
+  newTimelineEvent.value.timestamp = new Date(effectiveDate + "T23:59:59").toISOString();
 
   try {
     await syncToBakingWorks();

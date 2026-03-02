@@ -94,7 +94,9 @@ const isOwnHousehold = computed(() => {
 
   return auth.user.value.householdId === book.value.householdId;
 });
-const canEdit = computed(() => isOwnGroup.value && isOwnHousehold.value);
+const canEdit = computed(() => {
+  return isOwnGroup.value && isOwnHousehold.value && !!auth.user.value?.admin;
+});
 
 const dialogStates = reactive({
   edit: false,

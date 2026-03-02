@@ -1,6 +1,7 @@
 import { ref, computed } from "vue";
 import type { UserOut } from "~/lib/api/types/user";
 import { clearAllStores } from "~/composables/store";
+import { runAutoCheckin } from "~/composables/baking/use-auto-checkin";
 
 interface AuthData {
   value: UserOut | null;
@@ -83,6 +84,9 @@ export const useAuthBackend = function (): AuthState {
       const { access_token } = response.data;
       setToken(access_token);
       await getSession();
+      if (authUser.value?.id) {
+        await runAutoCheckin(authUser.value.id, true);
+      }
     }
     catch (error) {
       authStatus.value = "unauthenticated";

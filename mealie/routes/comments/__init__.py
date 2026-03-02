@@ -18,6 +18,7 @@ from mealie.schema.recipe.recipe_comments import (
 )
 from mealie.schema.response.pagination import PaginationQuery
 from mealie.schema.response.responses import ErrorResponse, SuccessResponse
+from mealie.services.baking.experience import EXP_REWARD, EXP_SOURCE_RECIPE_COMMENT, add_experience
 
 router = APIRouter(prefix="/comments", tags=["Recipe: Comments"])
 
@@ -92,7 +93,15 @@ class RecipeCommentRoutes(BaseUserController):
             )
 
         save_data = RecipeCommentSave(text=content, user_id=self.user.id, recipe_id=data.recipe_id)
-        return self.mixins.create_one(save_data)
+        created = self.mixins.create_one(save_data)
+        add_experience(
+            self.session,
+            self.user.id,
+            EXP_REWARD[EXP_SOURCE_RECIPE_COMMENT],
+            source=EXP_SOURCE_RECIPE_COMMENT,
+        )
+        self.session.commit()
+        return created
 
     @router.get("/{item_id}", response_model=RecipeCommentOut)
     def get_one(self, item_id: UUID4):

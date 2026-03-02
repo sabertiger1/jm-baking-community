@@ -36,6 +36,7 @@ class BakingRecordOut(BakingRecordBase):
     user_id: UUID4
     flower_count: int = Field(default=0, description="鲜花数")
     egg_count: int = Field(default=0, description="鸡蛋数")
+    is_excellent: bool = Field(default=False, description="是否优秀作品")
     created_at: datetime
     update_at: datetime
     
@@ -47,6 +48,10 @@ class BakingRecordOut(BakingRecordBase):
     class_name: str | None = Field(None, description="班级名称")
     group_name: str | None = Field(None, description="小组名称")
     recipe_name: str | None = Field(None, description="食谱名称")
+    total_exp: int = Field(default=0, description="用户总经验")
+    level_key: str = Field(default="level-1", description="等级键")
+    level_name: str = Field(default="烘焙小白", description="等级名称")
+    level_emoji: str = Field(default="🧈", description="等级表情")
     
     # 当前用户是否已投票
     has_flowered: bool = Field(default=False, description="是否已送花")

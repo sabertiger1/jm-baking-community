@@ -1,7 +1,7 @@
 """add grade_level to recipes
 
 Revision ID: f1c2d3e4a5b6
-Revises: c3d4e5f6a7b8
+Revises: c3d4e5f6a7b9
 Create Date: 2026-03-02 10:00:00.000000
 """
 
@@ -11,7 +11,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "f1c2d3e4a5b6"
-down_revision = "c3d4e5f6a7b8"
+down_revision = "c3d4e5f6a7b9"
 branch_labels = None
 depends_on = None
 
