@@ -49,3 +49,19 @@ class VoteResponse(MealieModel):
     egg_count: int = Field(default=0, description="当前鸡蛋数")
     points_remaining: int = Field(description="剩余积分")
     message: str | None = None
+
+
+class ReceivedVoteRecord(MealieModel):
+    """我收到的投票明细"""
+    vote_id: UUID4
+    work_id: UUID4
+    recipe_id: UUID4
+    recipe_name: str | None = None
+    vote_type: VoteType
+    voter_user_id: UUID4
+    voter_name: str | None = None
+    created_at: datetime
+
+
+class ReceivedVoteRecords(MealieModel):
+    items: list[ReceivedVoteRecord]

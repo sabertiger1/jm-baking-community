@@ -1,5 +1,5 @@
 <template>
-  <v-container>
+  <v-container :class="isMobile ? 'px-2' : ''">
     <BasePageTitle :title="`${recipeName} - 作品集`" />
     
     <!-- 筛选和排序 -->
@@ -8,20 +8,20 @@
         <v-row>
           <v-col cols="12" md="4">
             <v-select
-              v-model="filters.className"
-              :items="classList"
-              label="按班级筛选"
+              v-model="filters.grade"
+              :items="gradeList"
+              label="按年级筛选"
               clearable
               prepend-icon="$globals.icons.school"
             />
           </v-col>
           <v-col cols="12" md="4">
             <v-select
-              v-model="filters.groupName"
-              :items="groupList"
-              label="按小组筛选"
+              v-model="filters.className"
+              :items="classList"
+              label="按班级筛选"
               clearable
-              prepend-icon="$globals.icons.accountGroup"
+              prepend-icon="$globals.icons.account"
             />
           </v-col>
           <v-col cols="12" md="4">
@@ -33,6 +33,9 @@
             />
           </v-col>
         </v-row>
+        <div class="d-flex justify-end mt-2">
+          <v-btn variant="text" @click="resetFilters">清空筛选</v-btn>
+        </div>
       </v-card-text>
     </v-card>
 
@@ -62,7 +65,6 @@
 
     <v-card v-else>
       <v-card-text class="text-center py-8">
-        <v-icon size="64" color="grey">$globals.icons.image</v-icon>
         <div class="text-h6 mt-4">暂无作品</div>
         <div class="text-body-2 text-medium-emphasis">还没有学生提交作品</div>
       </v-card-text>
@@ -73,7 +75,7 @@
       v-if="pagination.pages > 1"
       v-model="page"
       :length="pagination.pages"
-      :total-visible="7"
+      :total-visible="isMobile ? 5 : 7"
       class="mt-4"
     />
   </v-container>
@@ -84,17 +86,23 @@ import { useRoute } from "vue-router";
 import { useUserApi } from "~/composables/api/api-client";
 import type { BakingRecord } from "~/lib/api/user/baking";
 import BakingWorkCard from "~/components/Domain/Baking/BakingWorkCard.vue";
-import { useRecipeApi } from "~/composables/api/api-client";
 
 definePageMeta({
   layout: "default",
 });
 
 const route = useRoute();
+const router = useRouter();
 const api = useUserApi();
+const display = useDisplay();
+const isMobile = computed(() => display.smAndDown.value);
 const recipeId = computed(() => route.params.recipeId as string);
 
-const recipeName = ref("作品集");
+const recipeName = ref(
+  typeof route.query.recipeName === "string" && route.query.recipeName.trim()
+    ? route.query.recipeName.trim()
+    : "作品集",
+);
 
 async function loadRecipeName() {
   try {
@@ -103,9 +111,11 @@ async function loadRecipeName() {
       recipeName.value = works.value[0].recipeName;
       return;
     }
-    // 否则尝试从API获取
-    // 注意：这里需要根据实际的API结构调整
-    // 如果baking records包含recipe信息，可以直接使用
+    // 无作品时，通过配方ID读取配方名称，避免显示“作品集 - 作品集”
+    const { data } = await api.recipes.getOne(recipeId.value);
+    if (data?.name) {
+      recipeName.value = data.name;
+    }
   } catch (error) {
     console.error("加载食谱信息失败:", error);
   }
@@ -117,8 +127,8 @@ const perPage = 20;
 const pagination = ref({ total: 0, pages: 0 });
 
 const filters = reactive({
+  grade: null as string | null,
   className: null as string | null,
-  groupName: null as string | null,
 });
 
 const sortBy = ref("created_at");
@@ -128,16 +138,18 @@ const sortOptions = [
   { title: "鸡蛋最多", value: "egg_count" },
 ];
 
+const gradeList = ref<string[]>([]);
 const classList = ref<string[]>([]);
-const groupList = ref<string[]>([]);
+const resolvedRecipeId = ref<string>("");
 
 async function loadWorks() {
   loading.value = true;
   try {
+    const targetRecipeId = resolvedRecipeId.value || recipeId.value;
     const result = await api.baking.getBakingRecords({
-      recipeId: recipeId.value,
+      recipeId: targetRecipeId,
+      grade: filters.grade || undefined,
       className: filters.className || undefined,
-      groupName: filters.groupName || undefined,
       sortBy: sortBy.value,
       order: "desc",
       page: page.value,
@@ -148,7 +160,7 @@ async function loadWorks() {
       total: result.total,
       pages: result.pages,
     };
-    
+
     // 如果还没有加载食谱名称，从第一个作品获取
     if (works.value.length > 0 && works.value[0].recipeName && recipeName.value === "作品集") {
       recipeName.value = works.value[0].recipeName;
@@ -162,14 +174,20 @@ async function loadWorks() {
 
 async function loadFilters() {
   try {
-    classList.value = await api.baking.getClassList();
-    groupList.value = await api.baking.getGroupList();
+    gradeList.value = await api.baking.getBakingGradeList();
+    classList.value = await api.baking.getBakingClassList(filters.grade || undefined);
   } catch (error) {
     console.error("加载筛选选项失败:", error);
   }
 }
 
 async function handleVote(workId: string, voteType: "flower" | "egg") {
+  const voteLabel = voteType === "flower" ? "送花 🌸" : "送鸡蛋 🥚";
+  const confirmed = window.confirm(`确认${voteLabel}吗？本次投票将扣除 5 积分。`);
+  if (!confirmed) {
+    return;
+  }
+
   try {
     await api.baking.vote({ workId, voteType });
     await loadWorks();
@@ -188,13 +206,49 @@ async function handleCancelVote(workId: string, voteType: string) {
   }
 }
 
-watch([page, sortBy, () => filters.className, () => filters.groupName], () => {
+function triggerListReload() {
+  if (page.value !== 1) {
+    page.value = 1;
+    return;
+  }
+  loadWorks();
+}
+
+function resetFilters() {
+  filters.grade = null;
+  filters.className = null;
+  sortBy.value = "created_at";
+  triggerListReload();
+}
+
+watch(page, () => {
   loadWorks();
 });
 
+watch([sortBy, () => filters.grade, () => filters.className], () => {
+  triggerListReload();
+});
+
+watch(() => filters.grade, async () => {
+  filters.className = null;
+  try {
+    classList.value = await api.baking.getBakingClassList(filters.grade || undefined);
+  } catch (error) {
+    console.error("加载班级列表失败:", error);
+    classList.value = [];
+  }
+});
+
 onMounted(() => {
-  loadRecipeName();
   loadWorks();
   loadFilters();
 });
+
+watch(
+  () => [works.value.length, recipeId.value],
+  () => {
+    loadRecipeName();
+  },
+  { immediate: true },
+);
 </script>

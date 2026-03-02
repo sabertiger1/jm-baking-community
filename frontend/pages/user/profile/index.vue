@@ -32,7 +32,7 @@
         <UserInviteDialog v-model="inviteDialog" />
       </v-card>
     </section>
-    <section class="my-3">
+    <section v-if="isAdmin" class="my-3">
       <div>
         <h3 class="text-h5">
           {{ $t('profile.account-summary') }}
@@ -75,8 +75,8 @@
         </v-col>
       </v-row>
     </section>
-    <v-divider class="my-7" />
-    <section>
+    <v-divider v-if="isAdmin" class="my-7" />
+    <section v-if="isAdmin">
       <div>
         <h3 class="text-h6">
           {{ $t('profile.personal') }}
@@ -118,101 +118,8 @@
         </AdvancedOnly>
       </v-row>
     </section>
-    <v-divider class="my-7" />
-    <section>
-      <div>
-        <h3 class="text-h6">
-          {{ $t('household.household') }}
-        </h3>
-        <p>{{ $t('profile.household-description') }}</p>
-      </div>
-      <v-row tag="section">
-        <v-col
-          v-if="user.canManageHousehold"
-          cols="12"
-          sm="12"
-          md="6"
-        >
-          <UserProfileLinkCard
-            :link="{ text: $t('profile.household-settings'), to: `/household` }"
-            image="/svgs/manage-group-settings.svg"
-          >
-            <template #title>
-              {{ $t('profile.household-settings') }}
-            </template>
-            {{ $t('profile.household-settings-description') }}
-          </UserProfileLinkCard>
-        </v-col>
-        <v-col
-          cols="12"
-          sm="12"
-          md="6"
-        >
-          <UserProfileLinkCard
-            :link="{ text: $t('profile.manage-cookbooks'), to: `/g/${groupSlug}/cookbooks` }"
-            image="/svgs/manage-cookbooks.svg"
-          >
-            <template #title>
-              {{ $t('sidebar.cookbooks') }}
-            </template>
-            {{ $t('profile.cookbooks-description') }}
-          </UserProfileLinkCard>
-        </v-col>
-        <v-col
-          v-if="user.canManage"
-          cols="12"
-          sm="12"
-          md="6"
-        >
-          <UserProfileLinkCard
-            :link="{ text: $t('profile.manage-members'), to: `/household/members` }"
-            image="/svgs/manage-members.svg"
-          >
-            <template #title>
-              {{ $t('profile.members') }}
-            </template>
-            {{ $t('profile.members-description') }}
-          </UserProfileLinkCard>
-        </v-col>
-        <AdvancedOnly>
-          <v-col
-            v-if="user.advanced"
-            cols="12"
-            sm="12"
-            md="6"
-          >
-            <UserProfileLinkCard
-              :link="{ text: $t('profile.manage-webhooks'), to: `/household/webhooks` }"
-              image="/svgs/manage-webhooks.svg"
-            >
-              <template #title>
-                {{ $t('settings.webhooks.webhooks') }}
-              </template>
-              {{ $t('profile.webhooks-description') }}
-            </UserProfileLinkCard>
-          </v-col>
-        </AdvancedOnly>
-        <AdvancedOnly>
-          <v-col
-            cols="12"
-            sm="12"
-            md="6"
-          >
-            <UserProfileLinkCard
-              :link="{ text: $t('profile.manage-notifiers'), to: `/household/notifiers` }"
-              image="/svgs/manage-notifiers.svg"
-            >
-              <template #title>
-                {{ $t('profile.notifiers') }}
-              </template>
-              {{ $t('profile.notifiers-description') }}
-            </UserProfileLinkCard>
-          </v-col>
-        </AdvancedOnly>
-      </v-row>
-    </section>
-    <v-divider class="my-7" />
-    <section v-if="user.canManage || user.canOrganize || user.advanced">
+    <v-divider v-if="isAdmin" class="my-7" />
+    <section v-if="isAdmin">
       <div>
         <h3 class="text-h6">
           {{ $t('group.group') }}
@@ -221,7 +128,7 @@
       </div>
       <v-row tag="section">
         <v-col
-          v-if="user.canManage"
+          v-if="isAdmin"
           cols="12"
           sm="12"
           md="6"
@@ -237,7 +144,7 @@
           </UserProfileLinkCard>
         </v-col>
         <v-col
-          v-if="user.canOrganize"
+          v-if="isAdmin"
           cols="12"
           sm="12"
           md="6"
@@ -254,6 +161,7 @@
         </v-col>
         <AdvancedOnly>
           <v-col
+            v-if="isAdmin"
             cols="12"
             sm="12"
             md="6"
@@ -315,6 +223,7 @@ export default defineNuxtComponent({
         canInvite,
       };
     });
+    const isAdmin = computed(() => user.value?.admin === true);
 
     const inviteDialog = ref(false);
     const api = useUserApi();
@@ -355,7 +264,7 @@ export default defineNuxtComponent({
     const statsTo = computed<{ [key: string]: string }>(() => {
       return {
         totalRecipes: `/g/${groupSlug.value}/`,
-        totalUsers: "/household/members",
+        totalUsers: isAdmin.value ? "/household/members" : "/user/profile",
         totalCategories: `/g/${groupSlug.value}/recipes/categories`,
         totalTags: `/g/${groupSlug.value}/recipes/tags`,
         totalTools: `/g/${groupSlug.value}/recipes/tools`,
@@ -374,6 +283,7 @@ export default defineNuxtComponent({
       inviteDialog,
       stats,
       user,
+      isAdmin,
     };
   },
 });

@@ -3,12 +3,13 @@ from datetime import datetime
 
 from fastapi import Depends, HTTPException, Query, status
 from pydantic import UUID4
-from sqlalchemy import and_, desc, func, or_, select
+from sqlalchemy import and_, desc, distinct, func, select
 from sqlalchemy.orm import joinedload
 
 from mealie.core.dependencies.dependencies import require_complete_profile
 from mealie.db.models.baking.baking_records import UserBakingRecord
 from mealie.db.models.baking.votes import VoteType, WorkVote
+from mealie.db.models.users import User
 from mealie.db.models.users.user_details import UserDetails
 from mealie.routes._base import BaseUserController, controller
 from mealie.routes._base.routers import UserAPIRouter
@@ -25,7 +26,7 @@ router = UserAPIRouter()
 
 @controller(router)
 class BakingRecordsController(BaseUserController):
-    @router.post("", response_model=BakingRecordOut, status_code=201, dependencies=[Depends(require_complete_profile)])
+    @router.post("/", response_model=BakingRecordOut, status_code=201, dependencies=[Depends(require_complete_profile)])
     async def create_baking_record(self, data: BakingRecordCreate):
         """提交烘焙作品（需要完善资料，一个用户对一个配方只能上传一次）"""
         # 1. 验证食谱存在
@@ -64,6 +65,32 @@ class BakingRecordsController(BaseUserController):
         record = self.repos.baking_records.create(record_data)
         return self._enrich_baking_record(record)
 
+    @router.get("/grades", response_model=list[str])
+    async def get_grade_list(self):
+        """获取作品作者的年级列表（用于筛选）"""
+        stmt = (
+            select(distinct(UserDetails.grade))
+            .select_from(UserBakingRecord)
+            .join(UserDetails, UserBakingRecord.user_id == UserDetails.user_id)
+            .where(UserDetails.grade.isnot(None), UserDetails.grade != "")
+        )
+        result = self.session.execute(stmt).scalars().all()
+        return sorted([grade for grade in result if grade])
+
+    @router.get("/classes", response_model=list[str])
+    async def get_baking_class_list(self, grade: str | None = Query(None, description="按年级过滤班级")):
+        """获取作品作者的班级列表（可按年级筛选）"""
+        stmt = (
+            select(distinct(UserDetails.class_name))
+            .select_from(UserBakingRecord)
+            .join(UserDetails, UserBakingRecord.user_id == UserDetails.user_id)
+            .where(UserDetails.class_name.isnot(None), UserDetails.class_name != "")
+        )
+        if grade:
+            stmt = stmt.where(UserDetails.grade == grade)
+        result = self.session.execute(stmt).scalars().all()
+        return sorted([class_name for class_name in result if class_name])
+
     @router.get("/{work_id}", response_model=BakingRecordOut)
     async def get_baking_record(self, work_id: UUID4):
         """获取单个作品详情"""
@@ -88,12 +115,13 @@ class BakingRecordsController(BaseUserController):
         updated = self.repos.baking_records.update(work_id, data.model_dump(exclude_unset=True))
         return self._enrich_baking_record(updated)
 
-    @router.get("", response_model=BakingRecordPagination)
+    @router.get("/", response_model=BakingRecordPagination)
     async def get_baking_records(
         self,
         recipe_id: UUID4 | None = Query(None, description="食谱ID"),
+        user_id: UUID4 | None = Query(None, description="用户ID"),
+        grade: str | None = Query(None, description="年级"),
         class_name: str | None = Query(None, description="班级名称"),
-        group_name: str | None = Query(None, description="小组名称"),
         sort_by: str = Query("created_at", description="排序字段"),
         order: str = Query("desc", description="排序方向"),
         page: int = Query(1, ge=1),
@@ -110,17 +138,16 @@ class BakingRecordsController(BaseUserController):
         filters = []
         if recipe_id:
             filters.append(UserBakingRecord.recipe_id == recipe_id)
+        if user_id:
+            filters.append(UserBakingRecord.user_id == user_id)
 
-        # 按班级/小组筛选（需要通过 user_details 关联）
-        if class_name or group_name:
+        # 按年级/班级筛选（通过 user_details 关联）
+        if grade or class_name:
             query = query.join(UserDetails, UserBakingRecord.user_id == UserDetails.user_id)
+            if grade:
+                filters.append(UserDetails.grade == grade)
             if class_name:
                 filters.append(UserDetails.class_name == class_name)
-            if group_name:
-                # 关联 user_classes 表获取小组信息
-                from mealie.db.models.baking.classes import UserClass
-                query = query.join(UserClass, UserBakingRecord.user_id == UserClass.user_id)
-                filters.append(UserClass.group_name == group_name)
 
         if filters:
             query = query.filter(and_(*filters))
@@ -219,6 +246,8 @@ class BakingRecordsController(BaseUserController):
             "update_at": record.update_at,
             "user_name": record.user.username if record.user else None,
             "user_full_name": record.user.full_name if record.user else None,
+            "avatar_url": user_details.avatar_url if user_details else None,
+            "grade": user_details.grade if user_details else None,
             "class_name": user_details.class_name if user_details else None,
             "group_name": self._get_user_group_name(record.user_id),
             "recipe_name": recipe_name,

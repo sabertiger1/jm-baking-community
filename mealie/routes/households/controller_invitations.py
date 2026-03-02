@@ -80,6 +80,8 @@ class GroupInvitationsController(BaseUserController):
 
         email_service = EmailService(locale=accept_language)
         url = f"{self.settings.BASE_URL}/register?token={invite.token}"
+        if invite.invite_role == "student":
+            url = f"{url}&inviteRole=student"
 
         success = False
         error = None

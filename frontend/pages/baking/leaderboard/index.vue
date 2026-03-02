@@ -121,7 +121,7 @@ async function getUserName(userId: string): Promise<string> {
   try {
     const details = await api.users.getUserDetailsPublic(userId);
     userDetailsCache.value[userId] = details;
-    return details.real_name || userId;
+    return details.realName || userId;
   } catch (error) {
     console.error("获取用户详情失败:", error);
     return userId;
@@ -139,8 +139,8 @@ async function loadPointsLeaderboard() {
           const details = await api.users.getUserDetailsPublic(item.userId);
           return {
             ...item,
-            realName: details.real_name,
-            className: details.class_name,
+            realName: details.realName,
+            className: details.className,
           };
         } catch (error) {
           return {

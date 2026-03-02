@@ -43,6 +43,7 @@ const routes = {
   usersIdFavoritesSlug: (id: string, slug: string) => `${prefix}/users/${id}/favorites/${slug}`,
   usersIdRatings: (id: string) => `${prefix}/users/${id}/ratings`,
   usersIdRatingsSlug: (id: string, slug: string) => `${prefix}/users/${id}/ratings/${slug}`,
+  usersRecipeRatings: (slug: string) => `${prefix}/users/recipe/${slug}/ratings`,
   usersSelfFavoritesId: (id: string) => `${prefix}/users/self/favorites/${id}`,
   usersSelfRatingsId: (id: string) => `${prefix}/users/self/ratings/${id}`,
 
@@ -77,6 +78,10 @@ export class UserApi extends BaseCRUDAPI<UserIn, UserOut, UserBase> {
     return await this.requests.get<UserRatingsSummaries>(routes.ratingsSelf);
   }
 
+  async getSelf() {
+    return await this.requests.get<UserOut>(routes.usersSelf);
+  }
+
   async getRatings(id: string) {
     return await this.requests.get<UserRatingsOut>(routes.usersIdRatings(id));
   }
@@ -87,6 +92,10 @@ export class UserApi extends BaseCRUDAPI<UserIn, UserOut, UserBase> {
 
   async getSelfRatings() {
     return await this.requests.get<UserRatingsSummaries>(routes.ratingsSelf);
+  }
+
+  async getRecipeRatings(slug: string) {
+    return await this.requests.get<UserRatingsOut>(routes.usersRecipeRatings(slug));
   }
 
   async changePassword(changePassword: ChangePassword) {
@@ -103,7 +112,7 @@ export class UserApi extends BaseCRUDAPI<UserIn, UserOut, UserBase> {
 
   userProfileImage(id: string) {
     if (!id || id === undefined) return;
-    return `/api/users/${id}/image`;
+    return `/api/media/users/${id}/profile.webp`;
   }
 
   async resetPassword(payload: ResetPassword) {
@@ -116,11 +125,25 @@ export class UserApi extends BaseCRUDAPI<UserIn, UserOut, UserBase> {
   }
 
   async completeProfile(data: CompleteProfileRequest) {
-    return await this.requests.post<UserDetails>(routes.userDetailsMeComplete, data);
+    return await this.requests.post<UserDetails>(routes.userDetailsMeComplete, {
+      real_name: data.realName,
+      grade: data.grade,
+      class_name: data.className,
+      avatar_url: data.avatarUrl,
+    });
   }
 
   async updateUserDetails(data: UserDetailsUpdate) {
-    return await this.requests.put<UserDetails>(routes.userDetailsMe, data);
+    return await this.requests.put<UserDetails>(routes.userDetailsMe, {
+      real_name: data.realName,
+      grade: data.grade,
+      class_name: data.className,
+      avatar_url: data.avatarUrl,
+    });
+  }
+
+  async updateSelfDetails(data: UserDetailsUpdate) {
+    return await this.updateUserDetails(data);
   }
 
   async getUserDetailsCheck() {

@@ -23,6 +23,7 @@ export interface CreateUserRegistration {
   group?: string | null;
   household?: string | null;
   groupToken?: string | null;
+  inviteRole?: "student" | null;
   email: string;
   username: string;
   fullName: string;

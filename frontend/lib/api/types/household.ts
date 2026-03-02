@@ -42,6 +42,7 @@ export interface EmailInitationResponse {
 export interface EmailInvitation {
   email: string;
   token: string;
+  inviteRole?: "student" | null;
 }
 export interface GroupEventNotifierCreate {
   name: string;

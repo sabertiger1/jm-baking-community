@@ -15,7 +15,7 @@
       v-model="sidebar"
       absolute
       :top-link="topLinks"
-      :secondary-links="cookbookLinks || []"
+      :secondary-links="[]"
     >
       <v-menu
         offset-y
@@ -25,7 +25,7 @@
       >
         <template #activator="{ props }">
           <v-btn
-            v-if="isOwnGroup"
+            v-if="isOwnGroup && canCreateRecipe"
             rounded
             size="large"
             class="ml-2 mt-3"
@@ -92,23 +92,14 @@
       </v-scroll-x-transition>
     </v-main>
     
-    <!-- 资料完善弹窗 -->
-    <ProfileCompleteDialog
-      v-model="profileComplete.showDialog.value"
-      :check-result="profileComplete.checkResult.value"
-      @completed="profileComplete.refresh()"
-    />
   </v-app>
 </template>
 
 <script lang="ts">
 import { useLoggedInState } from "~/composables/use-logged-in-state";
 import type { SideBarLink } from "~/types/application-types";
-import { useCookbookPreferences } from "~/composables/use-users/preferences";
 import { useCookbookStore, usePublicCookbookStore } from "~/composables/store/use-cookbook-store";
 import type { ReadCookBook } from "~/lib/api/types/cookbook";
-import ProfileCompleteDialog from "~/components/Domain/Baking/ProfileCompleteDialog.vue";
-import { useProfileComplete } from "~/composables/use-profile-complete";
 
 export default defineNuxtComponent({
   setup() {
@@ -121,7 +112,6 @@ export default defineNuxtComponent({
     const route = useRoute();
     const groupSlug = computed(() => route.params.groupSlug as string || auth.user.value?.groupSlug || "");
 
-    const cookbookPreferences = useCookbookPreferences();
     const ownCookbookStore = useCookbookStore(i18n);
     const publicCookbookStoreCache = ref<Record<string, ReturnType<typeof usePublicCookbookStore>>>({});
 
@@ -145,6 +135,8 @@ export default defineNuxtComponent({
 
     const showImageImport = computed(() => $appInfo.enableOpenaiImageServices);
     const languageDialog = ref<boolean>(false);
+    // 统一身份策略：只有 admin=true 视为管理员，其余都按学生处理
+    const isStudent = computed(() => !!auth.user.value && !auth.user.value.admin);
 
     const sidebar = ref<boolean>(false);
     onMounted(() => {
@@ -196,12 +188,7 @@ export default defineNuxtComponent({
       });
 
       links.sort((a, b) => a.title.localeCompare(b.title));
-      if (auth.user.value && cookbookPreferences.value.hideOtherHouseholds) {
-        return ownLinks;
-      }
-      else {
-        return [...ownLinks, ...links];
-      }
+      return [...ownLinks, ...links];
     });
 
     const createLinks = computed(() => [
@@ -248,83 +235,86 @@ export default defineNuxtComponent({
             restricted: false,
           },
           {
-            icon: $globals.icons.search,
-            to: `/g/${groupSlug.value}/recipes/finder`,
-            title: i18n.t("recipe-finder.recipe-finder"),
+            icon: $globals.icons.book,
+            to: `/g/${groupSlug.value}/cookbooks?readonly=1`,
+            title: "食谱合集",
             restricted: false,
           },
-        ],
-      },
-      {
-        icon: $globals.icons.account,
-        to: "/baking/profile",
-        title: "个人主页",
-        restricted: true,
-      },
-      {
-        icon: $globals.icons.search,
-        to: `/g/${groupSlug.value}/recipes/finder`,
-        title: i18n.t("recipe-finder.recipe-finder"),
-        restricted: false,
-      },
-      {
-        icon: $globals.icons.calendarMultiselect,
-        title: i18n.t("meal-plan.meal-planner"),
-        to: "/household/mealplan/planner/view",
-        restricted: true,
-      },
-      {
-        icon: $globals.icons.formatListCheck,
-        title: i18n.t("shopping-list.shopping-lists"),
-        to: "/shopping-lists",
-        restricted: true,
-      },
-      {
-        icon: $globals.icons.timelineText,
-        title: i18n.t("recipe.timeline"),
-        to: `/g/${groupSlug.value}/recipes/timeline`,
-        restricted: true,
-      },
-      {
-        icon: $globals.icons.book,
-        to: `/g/${groupSlug.value}/cookbooks`,
-        title: i18n.t("cookbook.cookbooks"),
-        restricted: true,
-      },
-      {
-        icon: $globals.icons.organizers,
-        title: i18n.t("general.organizers"),
-        restricted: true,
-        children: [
           {
-            icon: $globals.icons.categories,
-            to: `/g/${groupSlug.value}/recipes/categories`,
-            title: i18n.t("sidebar.categories"),
+            icon: $globals.icons.user,
+            to: "/baking/profile",
+            title: "个人主页",
             restricted: true,
           },
           {
-            icon: $globals.icons.tags,
-            to: `/g/${groupSlug.value}/recipes/tags`,
-            title: i18n.t("sidebar.tags"),
-            restricted: true,
-          },
-          {
-            icon: $globals.icons.potSteam,
-            to: `/g/${groupSlug.value}/recipes/tools`,
-            title: i18n.t("tool.tools"),
+            icon: $globals.icons.timelineText,
+            title: i18n.t("recipe.timeline"),
+            to: `/g/${groupSlug.value}/recipes/timeline`,
             restricted: true,
           },
         ],
       },
+      ...(
+        isStudent.value
+          ? []
+          : [
+              {
+                icon: $globals.icons.calendarMultiselect,
+                title: i18n.t("meal-plan.meal-planner"),
+                to: "/household/mealplan/planner/view",
+                restricted: true,
+              },
+              {
+                icon: $globals.icons.formatListCheck,
+                title: i18n.t("shopping-list.shopping-lists"),
+                to: "/shopping-lists",
+                restricted: true,
+              },
+              {
+                icon: $globals.icons.book,
+                to: `/g/${groupSlug.value}/cookbooks`,
+                title: "合集创建",
+                restricted: true,
+              },
+            ]
+      ),
+      ...(
+        isStudent.value
+          ? []
+          : [
+              {
+                icon: $globals.icons.organizers,
+                title: i18n.t("general.organizers"),
+                restricted: true,
+                children: [
+                  {
+                    icon: $globals.icons.categories,
+                    to: `/g/${groupSlug.value}/recipes/categories`,
+                    title: i18n.t("sidebar.categories"),
+                    restricted: true,
+                  },
+                  {
+                    icon: $globals.icons.tags,
+                    to: `/g/${groupSlug.value}/recipes/tags`,
+                    title: i18n.t("sidebar.tags"),
+                    restricted: true,
+                  },
+                  {
+                    icon: $globals.icons.potSteam,
+                    to: `/g/${groupSlug.value}/recipes/tools`,
+                    title: i18n.t("tool.tools"),
+                    restricted: true,
+                  },
+                ],
+              },
+            ]
+      ),
     ]);
 
-    const profileComplete = useProfileComplete();
-    
     // 检查用户是否可以创建配方（学生不能创建）
     const canCreateRecipe = computed(() => {
       if (!auth.user.value) return false;
-      // 如果用户是学生，不能创建配方
-      return auth.user.value.role !== "student";
+      return auth.user.value.admin === true;
     });
     
     return {
@@ -335,7 +325,6 @@ export default defineNuxtComponent({
       isOwnGroup,
       languageDialog,
       sidebar,
-      profileComplete,
       canCreateRecipe,
     };
   },

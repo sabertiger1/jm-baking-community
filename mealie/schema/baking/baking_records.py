@@ -42,6 +42,8 @@ class BakingRecordOut(BakingRecordBase):
     # 关联信息
     user_name: str | None = Field(None, description="用户名")
     user_full_name: str | None = Field(None, description="用户全名")
+    avatar_url: str | None = Field(None, description="用户头像URL")
+    grade: str | None = Field(None, description="年级")
     class_name: str | None = Field(None, description="班级名称")
     group_name: str | None = Field(None, description="小组名称")
     recipe_name: str | None = Field(None, description="食谱名称")

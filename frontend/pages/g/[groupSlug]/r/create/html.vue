@@ -101,6 +101,7 @@
 import type { AxiosResponse } from "axios";
 import { useTagStore } from "~/composables/store/use-tag-store";
 import { useUserApi } from "~/composables/api";
+import { alert } from "~/composables/use-toast";
 import { useNewRecipeOptions } from "~/composables/use-new-recipe-options";
 import { validators } from "~/composables/use-validators";
 import type { VForm } from "~/types/auto-forms";
@@ -167,6 +168,51 @@ export default defineNuxtComponent({
     }
     handleIsEditJson();
 
+    function normalizeRecipeJsonForImport(input: any) {
+      if (!input || typeof input !== "object") {
+        return input;
+      }
+
+      // Already schema.org Recipe-like payload
+      if (
+        input["@type"] === "Recipe"
+        || input.recipeIngredient
+        || input.recipeInstructions
+      ) {
+        return {
+          "@context": input["@context"] || "https://schema.org",
+          ...input,
+          "@type": input["@type"] || "Recipe",
+        };
+      }
+
+      // Custom format payload -> schema.org Recipe
+      const ingredients = Array.isArray(input.ingredients) ? input.ingredients : [];
+      const instructions = Array.isArray(input.instructions) ? input.instructions : [];
+      const categories = Array.isArray(input.categories) ? input.categories : [];
+      const tags = Array.isArray(input.tags) ? input.tags : [];
+      const notes = Array.isArray(input.notes) ? input.notes : [];
+
+      const mergedDescription = [input.description, ...notes]
+        .filter(Boolean)
+        .join("\n");
+
+      return {
+        "@context": "https://schema.org",
+        "@type": "Recipe",
+        name: input.name || "Untitled Recipe",
+        description: mergedDescription || undefined,
+        recipeIngredient: ingredients,
+        recipeInstructions: instructions.map((text: string) => ({ "@type": "HowToStep", text })),
+        totalTime: input.totalTime || undefined,
+        prepTime: input.prepTime || undefined,
+        cookTime: input.cookTime || undefined,
+        recipeYield: input.recipeYield || undefined,
+        recipeCategory: categories,
+        keywords: tags.join(", "),
+      };
+    }
+
     async function createFromHtmlOrJson(htmlOrJsonData: string | object | null, importKeywordsAsTags: boolean, importCategories: boolean, url: string | null = null) {
       if (!htmlOrJsonData) {
         return;
@@ -180,9 +226,27 @@ export default defineNuxtComponent({
       let dataString;
       if (typeof htmlOrJsonData === "string") {
         dataString = htmlOrJsonData;
+        const trimmed = dataString.trim();
+        const isRawUrl = /^https?:\/\/\S+$/i.test(trimmed);
+        if (isRawUrl) {
+          state.loading = true;
+          alert.info("检测到你粘贴的是链接，已自动切换为 URL 导入");
+          const { response } = await api.recipes.createOneByUrl(trimmed, importKeywordsAsTags, importCategories);
+          handleResponse(response, importKeywordsAsTags);
+          return;
+        }
       }
       else {
-        dataString = JSON.stringify(htmlOrJsonData);
+        dataString = JSON.stringify(normalizeRecipeJsonForImport(htmlOrJsonData));
+      }
+
+      if (typeof htmlOrJsonData === "string" && dataString.trim().startsWith("{")) {
+        try {
+          const parsed = JSON.parse(dataString);
+          dataString = JSON.stringify(normalizeRecipeJsonForImport(parsed));
+        } catch {
+          // keep original string when not valid JSON
+        }
       }
 
       state.loading = true;

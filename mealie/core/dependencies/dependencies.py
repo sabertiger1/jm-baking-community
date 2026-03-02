@@ -15,6 +15,7 @@ from sqlalchemy.orm.session import Session
 from mealie.core import root_logger
 from mealie.core.config import get_app_dirs, get_app_settings
 from mealie.db.db_setup import generate_session
+from mealie.db.models.users.users import UserRole
 from mealie.repos.all_repositories import get_repositories
 from mealie.schema.user import PrivateUser, TokenData
 from mealie.schema.user.user import DEFAULT_INTEGRATION_ID, GroupInDB
@@ -143,7 +144,14 @@ async def require_complete_profile(
     session: Session = Depends(generate_session),
 ) -> PrivateUser:
     """检查用户资料是否完善，未完善则抛出异常（用于限制功能）"""
-    repos = get_repositories(session, group_id=current_user.group_id, household_id=current_user.household_id)
+    # 管理员始终不受资料完善限制
+    if current_user.admin:
+        return current_user
+
+    # 仅学生需要强制完善资料；老师不受此限制
+    is_student = current_user.role == UserRole.STUDENT or current_user.role is None
+    if not is_student:
+        return current_user
     
     # 检查用户是否有详细资料
     from mealie.db.models.users.user_details import UserDetails
@@ -153,14 +161,32 @@ async def require_complete_profile(
         select(UserDetails).filter(UserDetails.user_id == current_user.id)
     ).scalar_one_or_none()
     
-    if not user_details or not user_details.is_complete:
+    # 优先基于字段实时判断，避免 is_complete 历史脏数据导致误拦截
+    if user_details:
+        has_all_required_fields = all(
+            bool((value or "").strip())
+            for value in [
+                user_details.real_name,
+                user_details.grade,
+                user_details.class_name,
+                user_details.avatar_url,
+            ]
+        )
+        if has_all_required_fields and not user_details.is_complete:
+            user_details.is_complete = True
+            session.add(user_details)
+            session.commit()
+    else:
+        has_all_required_fields = False
+
+    if not user_details or not has_all_required_fields:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={
                 "error": "profile_incomplete",
                 "message": "请先完善个人资料（真实姓名、年级、班级、头像）才能使用此功能",
                 "missing_fields": (
-                    []
+                    ["real_name", "grade", "class_name", "avatar_url"]
                     if not user_details
                     else [
                         field
@@ -170,7 +196,7 @@ async def require_complete_profile(
                             ("class_name", user_details.class_name),
                             ("avatar_url", user_details.avatar_url),
                         ]
-                        if not value
+                        if not (value or "").strip()
                     ]
                 ),
             },

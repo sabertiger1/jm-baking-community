@@ -20,7 +20,7 @@
           dark
         >
           <v-toolbar-title class="text-h4 text-center">
-            Mealie
+            经贸烘焙社区
           </v-toolbar-title>
         </v-toolbar>
         <AppLogo />
@@ -344,6 +344,7 @@ export default defineNuxtComponent({
     // Handle Token URL / Initialization
     //
     const token = useRouteQuery("token");
+    const inviteRole = useRouteQuery("inviteRole");
     // TODO: We need to have some way to check to see if the site is in a state
     // Where it needs to be initialized with a user, in that case we'll handle that
     // somewhere...
@@ -496,6 +497,9 @@ export default defineNuxtComponent({
       }
       else {
         payload.groupToken = token.value;
+        if (inviteRole.value === "student") {
+          payload.inviteRole = "student";
+        }
       }
       const { response } = await api.register.register(payload);
       if (response?.status === 201) {

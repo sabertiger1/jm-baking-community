@@ -4,9 +4,12 @@ from .baking_records import (
     BakingRecordUpdate,
 )
 from .classes import UserClassCreate, UserClassOut, UserClassUpdate
-from .points import PointsOut, PointsUpdate
+from .points import CheckinRequest, CheckinResponse, PointsOut, PointsUpdate
 from .ratings import RecipeRatingCreate, RecipeRatingOut, RecipeRatingUpdate
-from .votes import WorkVoteCreate, WorkVoteOut
+from .votes import VoteRequest, VoteResponse, VoteType, WorkVoteCreate, WorkVoteOut
+
+# Backward-compatible alias used by repository layer.
+UserPoints = PointsOut
 
 __all__ = [
     "BakingRecordCreate",
@@ -16,9 +19,15 @@ __all__ = [
     "RecipeRatingOut",
     "RecipeRatingUpdate",
     "PointsOut",
+    "UserPoints",
     "PointsUpdate",
+    "CheckinRequest",
+    "CheckinResponse",
     "WorkVoteCreate",
     "WorkVoteOut",
+    "VoteType",
+    "VoteRequest",
+    "VoteResponse",
     "UserClassCreate",
     "UserClassOut",
     "UserClassUpdate",

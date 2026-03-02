@@ -137,10 +137,10 @@ async function loadSettings() {
     // 加载用户详细资料
     const details = await api.users.getUserDetails();
     if (details) {
-      profileForm.realName = details.real_name;
+      profileForm.realName = details.realName;
       profileForm.grade = details.grade || "";
-      profileForm.className = details.class_name || "";
-      profileForm.avatarUrl = details.avatar_url || "";
+      profileForm.className = details.className || "";
+      profileForm.avatarUrl = details.avatarUrl || "";
     }
 
     // 加载班级和小组信息
@@ -158,10 +158,10 @@ async function saveProfile() {
   loading.value = true;
   try {
     await api.users.updateSelfDetails({
-      real_name: profileForm.realName,
+      realName: profileForm.realName,
       grade: profileForm.grade || undefined,
-      class_name: profileForm.className || undefined,
-      avatar_url: profileForm.avatarUrl || undefined,
+      className: profileForm.className || undefined,
+      avatarUrl: profileForm.avatarUrl || undefined,
     });
     // 显示成功提示
   } catch (error) {

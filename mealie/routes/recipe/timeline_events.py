@@ -4,6 +4,7 @@ from functools import cached_property
 from fastapi import Depends, File, Form, HTTPException
 from pydantic import UUID4
 
+from mealie.core.dependencies.dependencies import require_complete_profile
 from mealie.repos.all_repositories import get_repositories
 from mealie.routes._base import BaseCrudController, controller
 from mealie.routes._base.mixins import HttpRepo
@@ -53,7 +54,12 @@ class RecipeTimelineEventsController(BaseCrudController):
         response.set_pagination_guides(router.url_path_for("get_all"), q.model_dump())
         return response
 
-    @router.post("", response_model=RecipeTimelineEventOut, status_code=201)
+    @router.post(
+        "",
+        response_model=RecipeTimelineEventOut,
+        status_code=201,
+        dependencies=[Depends(require_complete_profile)],
+    )
     def create_one(self, data: RecipeTimelineEventIn):
         # if the user id is not specified, use the currently-authenticated user
         data.user_id = data.user_id or self.user.id

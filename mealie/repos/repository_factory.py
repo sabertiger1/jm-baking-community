@@ -78,9 +78,9 @@ from mealie.schema.recipe.recipe_timeline_events import RecipeTimelineEventOut
 from mealie.schema.reports.reports import ReportEntryOut, ReportOut
 from mealie.schema.baking import (
     BakingRecordOut,
+    PointsOut as UserPointsOut,
     RecipeRatingOut,
     UserClassOut,
-    UserPoints as UserPointsOut,
     WorkVoteOut,
 )
 from mealie.schema.user import GroupInDB, LongLiveTokenInDB, PrivateUser

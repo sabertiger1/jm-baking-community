@@ -184,8 +184,8 @@ class RecipeModel(SqlAlchemyBase, BaseMixins):
     is_ocr_recipe: Mapped[bool | None] = mapped_column(sa.Boolean, default=False)
     
     # Baking Community Features
-    making_video_url: Mapped[str | None] = mapped_column(sa.String)  # 制作视频URL
-    key_points_video_url: Mapped[str | None] = mapped_column(sa.String)  # 要点视频URL
+    making_video_url: Mapped[str | None] = mapped_column(sa.Text)  # 制作视频URL
+    key_points_video_url: Mapped[str | None] = mapped_column(sa.Text)  # 要点视频URL
     
     # Baking Community Relationships
     ratings: Mapped[list["RecipeRating"]] = orm.relationship(

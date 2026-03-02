@@ -1,9 +1,16 @@
 <template>
-  <v-dialog v-model="dialog" max-width="600" persistent :close-on-back="false" :close-on-content-click="false">
+  <v-dialog v-model="dialog" max-width="600" :close-on-content-click="false">
     <v-card>
       <v-card-title class="d-flex align-center">
-        <v-icon color="warning" class="mr-2">mdi-alert</v-icon>
+        <v-icon :icon="$globals.icons.alert" color="warning" class="mr-2" />
         <span>完善个人资料</span>
+        <v-spacer />
+        <v-btn
+          :icon="$globals.icons.close"
+          variant="text"
+          size="small"
+          @click="closeDialog"
+        />
       </v-card-title>
       <v-card-text>
         <v-alert type="warning" class="mb-4">
@@ -44,7 +51,7 @@
             v-model="avatarFile"
             label="上传头像 *"
             accept="image/*"
-            prepend-icon="mdi-account"
+            :prepend-icon="$globals.icons.user"
             :rules="[rules.avatarRequired]"
             @change="handleAvatarChange"
           />
@@ -65,6 +72,9 @@
         </v-form>
       </v-card-text>
       <v-card-actions>
+        <v-btn variant="text" @click="closeDialog">
+          暂不完善
+        </v-btn>
         <v-spacer />
         <v-btn
           color="primary"
@@ -94,8 +104,9 @@ const emit = defineEmits<{
 }>();
 
 const api = useUserApi();
+const auth = useMealieAuth();
 const formRef = ref();
-const avatarFile = ref<File[]>([]);
+const avatarFile = ref<File | File[] | null>(null);
 const avatarPreview = ref<string | null>(null);
 const submitting = ref(false);
 const error = ref<string | null>(null);
@@ -112,7 +123,11 @@ const dialog = computed({
   set: (value) => emit("update:modelValue", value),
 });
 
-const missingFields = computed(() => props.checkResult?.missing_fields || []);
+function closeDialog() {
+  dialog.value = false;
+}
+
+const missingFields = computed(() => props.checkResult?.missingFields || []);
 const fieldNames: Record<string, string> = {
   real_name: "真实姓名",
   grade: "年级",
@@ -120,24 +135,34 @@ const fieldNames: Record<string, string> = {
   avatar_url: "头像",
 };
 
+function getSelectedFile(): File | null {
+  if (!avatarFile.value) {
+    return null;
+  }
+  if (Array.isArray(avatarFile.value)) {
+    return avatarFile.value[0] || null;
+  }
+  return avatarFile.value;
+}
+
 const canSubmit = computed(() => {
   return (
     form.real_name.trim().length >= 2 &&
     form.grade.trim().length > 0 &&
     form.class_name.trim().length > 0 &&
-    avatarFile.value.length > 0
+    !!getSelectedFile()
   );
 });
 
 const rules = {
   required: (v: any) => !!v || "此字段为必填项",
   minLength: (v: string) => (v && v.length >= 2) || "至少需要2个字符",
-  avatarRequired: (v: File[]) => (v && v.length > 0) || "请上传头像",
+  avatarRequired: () => !!getSelectedFile() || "请上传头像",
 };
 
 function handleAvatarChange() {
-  if (avatarFile.value && avatarFile.value.length > 0) {
-    const file = avatarFile.value[0];
+  const file = getSelectedFile();
+  if (file) {
     const reader = new FileReader();
     reader.onload = (e) => {
       avatarPreview.value = e.target?.result as string;
@@ -146,6 +171,20 @@ function handleAvatarChange() {
   } else {
     avatarPreview.value = null;
   }
+}
+
+async function uploadAvatar(file: File): Promise<string> {
+  const userId = auth.user.value?.id;
+  if (!userId) {
+    throw new Error("未获取到用户信息，请重新登录后重试");
+  }
+
+  const formData = new FormData();
+  // 与现有个人资料页保持一致，后端按该字段名接收头像文件
+  formData.append("profile", file);
+  await api.upload.file(`/api/users/${userId}/image`, formData);
+
+  return api.users.userProfileImage(userId) || "";
 }
 
 async function submit() {
@@ -163,30 +202,20 @@ async function submit() {
   error.value = null;
   
   try {
-    // 上传头像
-    let avatarUrl = "";
-    if (avatarFile.value && avatarFile.value.length > 0) {
-      const file = avatarFile.value[0];
-      // 转换为 base64（临时方案）
-      avatarUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const base64 = e.target?.result as string;
-          resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+    const file = getSelectedFile();
+    if (!file) {
+      throw new Error("请上传头像");
     }
-    
-    // 完善资料
+
+    // 先上传头像文件，再将头像地址写入资料详情
+    const avatarUrl = await uploadAvatar(file);
+
     await api.users.completeProfile({
-      real_name: form.real_name.trim(),
+      realName: form.real_name.trim(),
       grade: form.grade.trim(),
-      class_name: form.class_name.trim(),
-      avatar_url: avatarUrl,
+      className: form.class_name.trim(),
+      avatarUrl,
     });
-    
     emit("completed");
     dialog.value = false;
   } catch (err: any) {
@@ -198,7 +227,7 @@ async function submit() {
 }
 
 watch(() => props.checkResult, (newVal) => {
-  if (newVal && !newVal.is_complete) {
+  if (newVal && !newVal.isComplete) {
     // 预填充已有数据
     // 这里可以从 checkResult 中获取已有数据（如果有的话）
   }

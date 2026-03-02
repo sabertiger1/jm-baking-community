@@ -51,7 +51,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { MealsByDate } from "./types";
+import type { MealsByDate } from "~/lib/types/mealplan-planner";
 import type { ReadPlanEntry } from "~/lib/api/types/meal-plan";
 import GroupMealPlanDayContextMenu from "~/components/Domain/Household/GroupMealPlanDayContextMenu.vue";
 import RecipeCardMobile from "~/components/Domain/Recipe/RecipeCardMobile.vue";

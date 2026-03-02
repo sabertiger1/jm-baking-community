@@ -1,10 +1,9 @@
 <template>
-  <v-card>
+  <v-card class="work-card-clickable" @click="openWorkDetail">
     <v-img
       :src="work.imageUrl"
       :aspect-ratio="1"
       cover
-      @click="$router.push(`/baking/works/${work.id}`)"
     >
       <template #placeholder>
         <v-skeleton-loader type="image" />
@@ -15,13 +14,15 @@
       <!-- 用户信息 -->
       <div class="d-flex align-center mb-2">
         <v-avatar size="32" class="mr-2">
-          <img v-if="work.avatarUrl" :src="work.avatarUrl" />
-          <v-icon v-else>$globals.icons.account</v-icon>
+          <v-img :src="workAvatarSrc" cover />
         </v-avatar>
-        <div>
-          <div class="text-body-2 font-weight-medium">{{ work.userFullName || work.userName }}</div>
+        <div class="flex-grow-1" style="min-width: 0;">
+          <div class="text-body-2 font-weight-medium">
+            {{ work.userFullName || work.userName }}
+            <span v-if="work.recipeName" class="text-medium-emphasis"> · {{ work.recipeName }}</span>
+          </div>
           <div class="text-caption text-medium-emphasis">
-            {{ work.grade }} {{ work.className }}
+            制作时间：{{ createdAtText }}<span v-if="classText"> · {{ classText }}</span>
           </div>
         </div>
       </div>
@@ -32,38 +33,30 @@
       </p>
 
       <!-- 统计和操作 -->
-      <div class="d-flex justify-space-between align-center">
-        <div class="d-flex gap-2">
-          <v-chip size="small" color="pink" variant="tonal">
-            <v-icon start size="16">$globals.icons.flower</v-icon>
-            {{ work.flowerCount }}
-          </v-chip>
-          <v-chip size="small" color="orange" variant="tonal">
-            <v-icon start size="16">$globals.icons.egg</v-icon>
-            {{ work.eggCount }}
-          </v-chip>
+      <div class="d-flex" :class="isMobile ? 'flex-column' : 'justify-space-between align-center'" style="gap: 8px;">
+        <div class="d-flex flex-column text-caption text-medium-emphasis" style="gap: 4px;">
+          <div>🌸 鲜花数：{{ work.flowerCount }}</div>
+          <div>🥚 鸡蛋数：{{ work.eggCount }}</div>
         </div>
 
-        <div class="d-flex gap-1">
+        <div class="d-flex gap-1" :class="isMobile ? 'justify-end' : ''">
           <v-btn
             :disabled="work.hasFlowered"
             :color="work.hasFlowered ? 'pink' : 'default'"
             size="small"
             variant="text"
-            icon
-            @click="handleVote('flower')"
+            @click.stop="handleVote('flower')"
           >
-            <v-icon>$globals.icons.flower</v-icon>
+            送花 🌸
           </v-btn>
           <v-btn
             :disabled="work.hasEgged"
             :color="work.hasEgged ? 'orange' : 'default'"
             size="small"
             variant="text"
-            icon
-            @click="handleVote('egg')"
+            @click.stop="handleVote('egg')"
           >
-            <v-icon>$globals.icons.egg</v-icon>
+            送鸡蛋 🥚
           </v-btn>
         </div>
       </div>
@@ -72,6 +65,7 @@
 </template>
 
 <script setup lang="ts">
+import { useUserApi } from "~/composables/api/api-client";
 import type { BakingRecord } from "~/lib/api/user/baking";
 
 const props = defineProps<{
@@ -82,8 +76,73 @@ const emit = defineEmits<{
   vote: [workId: string, voteType: "flower" | "egg"];
   "cancel-vote": [workId: string, voteType: string];
 }>();
+const router = useRouter();
+const display = useDisplay();
+const isMobile = computed(() => display.smAndDown.value);
+const api = useUserApi();
+const fallbackAvatar = "/img/default-avatar.svg";
+
+function normalizeAvatarUrl(value?: string | null) {
+  if (!value) {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "null" || trimmed === "undefined") {
+    return null;
+  }
+  if (
+    trimmed.startsWith("data:image/")
+    || trimmed.startsWith("http://")
+    || trimmed.startsWith("https://")
+    || trimmed.startsWith("/")
+  ) {
+    return trimmed;
+  }
+  return null;
+}
+
+const classText = computed(() => {
+  const workRaw = props.work as unknown as Record<string, unknown>;
+  const grade = (typeof props.work.grade === "string" ? props.work.grade : workRaw.grade) as string | undefined;
+  const className = (
+    typeof props.work.className === "string"
+      ? props.work.className
+      : workRaw.class_name
+  ) as string | undefined;
+  return [grade, className].filter(value => typeof value === "string" && value.trim().length > 0).join(" ");
+});
+
+const workAvatarSrc = computed(() => {
+  const detailAvatar = normalizeAvatarUrl(props.work.avatarUrl);
+  if (detailAvatar) {
+    return detailAvatar;
+  }
+  if (props.work.userId) {
+    return api.users.userProfileImage(props.work.userId) || fallbackAvatar;
+  }
+  return fallbackAvatar;
+});
+
+const createdAtText = computed(() => {
+  if (!props.work.createdAt) {
+    return "-";
+  }
+  return new Date(props.work.createdAt).toLocaleString("zh-CN");
+});
+
+function openWorkDetail() {
+  router.push({
+    path: `/baking/work/${props.work.id}`,
+  });
+}
 
 function handleVote(type: "flower" | "egg") {
   emit("vote", props.work.id, type);
 }
 </script>
+
+<style scoped>
+.work-card-clickable {
+  cursor: pointer;
+}
+</style>

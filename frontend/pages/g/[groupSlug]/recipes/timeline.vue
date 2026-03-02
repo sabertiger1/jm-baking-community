@@ -1,9 +1,6 @@
 <template>
   <div>
-    <BasePageTitle
-      v-if="groupName"
-      class="mt-n4 pt-8"
-    >
+    <BasePageTitle class="mt-n4 pt-8">
       <template #header>
         <v-img
           width="100%"
@@ -13,7 +10,7 @@
         />
       </template>
       <template #title>
-        {{ $t("recipe.group-global-timeline", { groupName }) }}
+        我的时间轴制作表
       </template>
     </BasePageTitle>
     <v-sheet
@@ -43,25 +40,22 @@ export default defineNuxtComponent({
     const ready = ref<boolean>(false);
 
     useSeoMeta({
-      title: i18n.t("recipe.timeline"),
+      title: "我的时间轴制作表",
     });
 
-    const groupName = ref<string>("");
     const queryFilter = ref<string>("");
-    async function fetchHousehold() {
-      const { data } = await api.households.getCurrentUserHousehold();
-      if (data) {
-        queryFilter.value = `recipe.group_id="${data.groupId}"`;
-        groupName.value = data.group;
+    async function fetchMyTimelineFilter() {
+      const { data } = await api.users.getSelf();
+      if (data?.id) {
+        queryFilter.value = `user_id="${data.id}"`;
       }
 
       ready.value = true;
     }
 
-    useAsyncData("house-hold", fetchHousehold);
+    useAsyncData("my-timeline-filter", fetchMyTimelineFilter);
 
     return {
-      groupName,
       queryFilter,
       ready,
     };

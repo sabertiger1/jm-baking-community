@@ -1,0 +1,75 @@
+services:
+  mealie:
+    container_name: mealie
+    image: mealie:latest
+    build:
+      context: ../
+      target: production
+      dockerfile: ./docker/Dockerfile.fnos
+      args:
+        COMMIT: ${GIT_COMMIT_HASH:-unknown}
+    restart: always
+    volumes:
+      # 存储路径映射
+      - /vol1/1000/docker/mealie:/app/data
+    ports:
+      # 端口映射：本地端口:容器端口
+      - "9000:9000"
+    environment:
+      # 基础配置
+      PRODUCTION: "true"
+      TESTING: "false"
+      GIT_COMMIT_HASH: ${GIT_COMMIT_HASH:-unknown}
+      NLTK_DATA: "/nltk_data/"
+      APP_PORT: 9000
+      HOST: "0.0.0.0"
+      
+      # 数据库配置 - 使用 PostgreSQL（推荐生产环境）
+      # 如果使用 SQLite，设置 DB_ENGINE=sqlite，并注释掉 PostgreSQL 相关配置
+      DB_ENGINE: "postgres"  # 或 "sqlite"
+      
+      # PostgreSQL 配置（如果使用 PostgreSQL）
+      # 注意：PostgreSQL 默认端口是 5432，不是 3306（3306 是 MySQL 的端口）
+      POSTGRES_USER: ${DB_USER:-mealie_user}
+      # 强烈建议在 .env 中显式设置 DB_PASS，避免使用弱默认密码
+      POSTGRES_PASSWORD: ${DB_PASS:-change-me}
+      POSTGRES_SERVER: ${DB_HOST:-192.168.31.20}
+      POSTGRES_PORT: ${DB_PORT:-5432}
+      POSTGRES_DB: ${DB_NAME:-mealie}
+      
+      # 用户权限配置
+      PUID: 1000
+      PGID: 1000
+      
+      # 时区配置
+      TZ: "Asia/Shanghai"
+      
+      # 语言配置
+      LANG: "C.UTF-8"
+      
+      # 可选：允许注册（根据需求设置）
+      ALLOW_SIGNUP: "false"
+      
+      # 可选：日志级别
+      LOG_LEVEL: "INFO"
+      
+      # 可选：邮件配置（如果需要）
+      # SMTP_HOST: ""
+      # SMTP_PORT: "587"
+      # SMTP_FROM_NAME: "经贸烘焙社区"
+      # SMTP_FROM_EMAIL: ""
+      # SMTP_AUTH_STRATEGY: "TLS"
+      # SMTP_USER: ""
+      # SMTP_PASSWORD: ""
+    healthcheck:
+      test: ["CMD", "python", "-m", "mealie.scripts.healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mealie-network
+
+networks:
+  mealie-network:
+    driver: bridge

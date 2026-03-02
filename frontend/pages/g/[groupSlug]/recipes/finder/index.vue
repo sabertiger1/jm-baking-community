@@ -591,6 +591,10 @@ export default defineNuxtComponent({
     });
 
     const recipeResponseItems = ref<RecipeSuggestionResponseItem[]>([]);
+    function buildSuggestionQueryFilter() {
+      return state.settings.queryFilter || "";
+    }
+
     const recipeSuggestions = computed<RecipeSuggestions>(() => {
       const readyToMake: RecipeSuggestionResponseItem[] = [];
       const missingItems: RecipeSuggestionResponseItem[] = [];
@@ -622,7 +626,7 @@ export default defineNuxtComponent({
         const { data } = await api.recipes.getSuggestions(
           {
             limit: state.settings.limit,
-            queryFilter: state.settings.queryFilter,
+            queryFilter: buildSuggestionQueryFilter(),
             maxMissingFoods: state.settings.maxMissingFoods,
             maxMissingTools: state.settings.maxMissingTools,
             includeFoodsOnHand: state.settings.includeFoodsOnHand,

@@ -29,6 +29,21 @@ export default defineNuxtPlugin(() => {
       return response;
     },
     (error) => {
+      const parserError = error?.response?.data?.detail?.details as string | undefined;
+      if (parserError) {
+        if (parserError === "BAD_RECIPE_DATA") {
+          alert.error("导入失败：未识别到有效食谱数据。请使用“URL导入”粘贴页面链接，或在“HTML/JSON导入”中粘贴完整 HTML / schema.org Recipe JSON。");
+        } else if (parserError === "CONNECTION_ERROR") {
+          alert.error("导入失败：无法连接目标网页，请检查目标网站是否可访问。");
+        } else if (parserError === "NO_RECIPE_DATA") {
+          alert.error("导入失败：页面中没有可用的食谱结构化数据。");
+        } else {
+          alert.error(`导入失败：${parserError}`);
+        }
+      }
+      if (typeof error?.response?.data?.detail === "string") {
+        alert.error(error.response.data.detail as string);
+      }
       if (error?.response?.data?.detail?.message) {
         alert.error(error.response.data.detail.message as string);
       };

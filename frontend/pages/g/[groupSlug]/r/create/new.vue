@@ -44,11 +44,13 @@
 <script lang="ts">
 import type { AxiosResponse } from "axios";
 import { useUserApi } from "~/composables/api";
+import { alert } from "~/composables/use-toast";
 import { validators } from "~/composables/use-validators";
 import type { VForm } from "~/types/auto-forms";
 
 export default defineNuxtComponent({
   setup() {
+    const i18n = useI18n();
     const state = reactive({
       error: false,
       loading: false,
@@ -76,8 +78,21 @@ export default defineNuxtComponent({
       if (!domCreateByName.value?.validate() || name === "") {
         return;
       }
-      const { response } = await api.recipes.createOne({ name });
-      handleResponse(response as any, true);
+      state.loading = true;
+      state.error = false;
+      try {
+        const { response } = await api.recipes.createOne({ name });
+        handleResponse(response as any, true);
+      } catch (err: any) {
+        state.error = true;
+        const detail = err?.response?.data?.detail;
+        const message = typeof detail === "string"
+          ? detail
+          : (detail?.message || i18n.t("events.something-went-wrong"));
+        alert.error(message);
+      } finally {
+        state.loading = false;
+      }
     }
     return {
       domCreateByName,

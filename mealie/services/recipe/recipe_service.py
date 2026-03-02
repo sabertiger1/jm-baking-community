@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+from base64 import b64encode
 from datetime import UTC, datetime
 from pathlib import Path
 from shutil import copytree, rmtree
@@ -515,6 +516,35 @@ class RecipeService(RecipeServiceBase):
 
         self.group_recipes.delete_image(slug)
         return None
+
+    def update_recipe_video(self, slug: str, video: bytes, extension: str, video_type: str) -> str:
+        recipe = self.get_one(slug)
+        if not self.can_update([recipe.slug]):
+            raise exceptions.PermissionDenied("You do not have permission to edit this recipe.")
+
+        normalized_video_type = video_type.strip().lower()
+        if normalized_video_type in {"making", "making-video", "making_video"}:
+            field_name = "making_video_url"
+        elif normalized_video_type in {"key-points", "key_points", "keypoints"}:
+            field_name = "key_points_video_url"
+        else:
+            raise ValueError("Invalid video type")
+
+        ext = extension.strip().lower().lstrip(".")
+        mime_map = {
+            "mp4": "video/mp4",
+            "webm": "video/webm",
+            "ogg": "video/ogg",
+            "mov": "video/quicktime",
+            "m4v": "video/mp4",
+        }
+        mime_type = mime_map.get(ext, "video/mp4")
+        encoded = b64encode(video).decode("utf-8")
+        data_url = f"data:{mime_type};base64,{encoded}"
+
+        setattr(recipe, field_name, data_url)
+        updated = self.group_recipes.update(recipe.slug, recipe)
+        return getattr(updated, field_name)
 
     def patch_one(self, slug_or_id: str | UUID, patch_data: Recipe) -> Recipe:
         recipe: Recipe = self._pre_update_check(slug_or_id, patch_data)

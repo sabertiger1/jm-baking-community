@@ -6,7 +6,7 @@
         :loading="madeThisFormLoading"
         :icon="$globals.icons.chefHat"
         :title="$t('recipe.made-this')"
-        :submit-text="$t('recipe.add-to-timeline')"
+        :submit-text="$t('recipe.add-to-works')"
         can-submit
         disable-submit-on-enter
         @submit="createTimelineEvent"
@@ -148,6 +148,7 @@ import { useUserApi } from "~/composables/api";
 import { alert } from "~/composables/use-toast";
 import { useHouseholdSelf } from "~/composables/use-households";
 import type { Recipe, RecipeTimelineEventIn, RecipeTimelineEventOut } from "~/lib/api/types/recipe";
+import type { BakingRecord } from "~/lib/api/user/baking";
 import type { VForm } from "~/types/auto-forms";
 
 const props = defineProps<{ recipe: Recipe }>();
@@ -234,6 +235,61 @@ function updateUploadedImage(fileObject: Blob) {
   newTimelineEventImagePreviewUrl.value = URL.createObjectURL(fileObject);
 }
 
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve((reader.result as string) || "");
+    reader.onerror = () => reject(reader.error || new Error("读取图片失败"));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function syncToBakingWorks() {
+  if (!newTimelineEventImage.value || !props.recipe?.id) {
+    return;
+  }
+
+  const imageUrl = await blobToDataUrl(newTimelineEventImage.value);
+  if (!imageUrl) {
+    return;
+  }
+
+  const notes = newTimelineEvent.value.eventMessage?.trim() || undefined;
+
+  try {
+    await userApi.baking.createBakingRecord({
+      recipeId: props.recipe.id,
+      imageUrl,
+      notes,
+    });
+    return;
+  }
+  catch (error: any) {
+    const detail = error?.response?.data?.detail;
+    const duplicateError = typeof detail === "string"
+      && (detail.includes("已经对该配方提交过作品") || detail.includes("只能提交一次"));
+    if (!duplicateError) {
+      throw error;
+    }
+  }
+
+  // 已存在作品时，改为更新当前用户该配方下的作品
+  const records = await userApi.baking.getBakingRecords({
+    recipeId: props.recipe.id,
+    ...(auth.user.value?.id ? { userId: auth.user.value.id } : {}),
+    perPage: 1,
+  });
+  const myRecord = records.items[0];
+  if (!myRecord) {
+    return;
+  }
+
+  await userApi.baking.updateBakingRecord(myRecord.id, {
+    imageUrl,
+    notes,
+  });
+}
+
 const datePickerMenu = ref(false);
 const madeThisFormLoading = ref(false);
 
@@ -251,6 +307,29 @@ async function createTimelineEvent() {
   if (!(newTimelineEventTimestampString.value && props.recipe?.id && props.recipe?.slug)) {
     return;
   }
+  try {
+    const { data: check } = await userApi.users.getUserDetailsCheck();
+    if (check && !check.isComplete) {
+      const fieldNames: Record<string, string> = {
+        real_name: "真实姓名",
+        grade: "年级",
+        class_name: "班级",
+        avatar_url: "头像",
+      };
+      const missing = (check.missingFields || [])
+        .map(field => fieldNames[field] || field)
+        .join("、");
+      const msg = check.message || `请先完善个人资料后再提交作品${missing ? `（缺少：${missing}）` : ""}`;
+      alert.warning(msg);
+      return;
+    }
+  } catch (error) {
+    console.error("Failed to check profile completeness:", error);
+  }
+  if (!newTimelineEventImage.value) {
+    alert.warning("请先上传作品图片，再添加到作品集");
+    return;
+  }
 
   madeThisFormLoading.value = true;
 
@@ -262,6 +341,33 @@ async function createTimelineEvent() {
   // we choose the end of day so it always comes after "new recipe" events
   newTimelineEvent.value.timestamp = new Date(newTimelineEventTimestampString.value + "T23:59:59").toISOString();
 
+  try {
+    await syncToBakingWorks();
+    if (process.client) {
+      window.dispatchEvent(new CustomEvent("baking-work-submitted", {
+        detail: { recipeId: props.recipe.id },
+      }));
+    }
+  }
+  catch (error) {
+    console.error("Failed to sync to baking works:", error);
+    const err = error as any;
+    const detail = err?.response?.data?.detail;
+    if (err?.response?.status === 403) {
+      if (typeof detail === "string") {
+        alert.warning(detail);
+      } else if (detail && typeof detail === "object" && detail.message) {
+        alert.warning(detail.message);
+      } else {
+        alert.warning("请先完善个人资料（真实姓名、年级、班级、头像）后再提交作品");
+      }
+    } else {
+      alert.error("添加到作品集失败，请稍后重试");
+    }
+    madeThisFormLoading.value = false;
+    return;
+  }
+
   let newEvent: RecipeTimelineEventOut | null = null;
   try {
     const eventResponse = await userApi.recipes.createTimelineEvent(newTimelineEvent.value);
@@ -272,7 +378,7 @@ async function createTimelineEvent() {
   }
   catch (error) {
     console.error("Failed to create timeline event:", error);
-    alert.error(i18n.t("recipe.failed-to-add-to-timeline"));
+    alert.warning("已添加到作品集，但写入时间轴失败");
     resetMadeThisForm();
     return;
   }
@@ -339,10 +445,9 @@ async function createTimelineEvent() {
     }
   }
   if (imageError) {
-    alert.error(i18n.t("recipe.added-to-timeline-but-failed-to-add-image"));
-  }
-  else {
-    alert.success(i18n.t("recipe.added-to-timeline"));
+    alert.warning(i18n.t("recipe.added-to-works-but-failed-to-add-image"));
+  } else {
+    alert.success(i18n.t("recipe.added-to-works"));
   }
 
   resetMadeThisForm();

@@ -1,7 +1,7 @@
 const { user } = useMealieAuth();
 export default defineNuxtRouteMiddleware(() => {
-  // If the user is not allowed to manage group settings redirect to the home page
-  if (!user.value?.canManageHousehold) {
+  // 权限统一策略：仅管理员可访问家庭管理页
+  if (user.value?.admin !== true) {
     navigateTo("/");
   }
 });

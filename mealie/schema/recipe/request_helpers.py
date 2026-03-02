@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from mealie.schema._mealie import MealieModel
 
@@ -15,6 +15,10 @@ class SlugResponse(BaseModel):
 
 class UpdateImageResponse(BaseModel):
     image: str
+
+
+class UpdateVideoResponse(BaseModel):
+    video: str = Field(..., alias="videoUrl")
 
 
 class RecipeDuplicate(BaseModel):

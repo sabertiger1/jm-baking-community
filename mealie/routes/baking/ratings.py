@@ -7,6 +7,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.orm import joinedload
 
 from mealie.core.dependencies.dependencies import require_complete_profile
+from mealie.db.models.baking.baking_records import UserBakingRecord
 from mealie.db.models.baking.ratings import RecipeRating
 from mealie.db.models.users.user_details import UserDetails
 from mealie.routes._base import BaseUserController, controller
@@ -30,6 +31,14 @@ class RecipeRatingsController(BaseUserController):
         recipe = self.repos.recipes.get_one(recipe_id, "id")
         if not recipe:
             raise HTTPException(status_code=404, detail="食谱不存在")
+
+        made_record = (
+            self.session.query(UserBakingRecord)
+            .filter(UserBakingRecord.recipe_id == recipe_id, UserBakingRecord.user_id == self.user.id)
+            .first()
+        )
+        if not made_record:
+            raise HTTPException(status_code=403, detail="请先提交该配方作品后再进行评分")
 
         # 2. 检查是否已存在评分（确保唯一性）
         existing_rating = (
@@ -66,9 +75,7 @@ class RecipeRatingsController(BaseUserController):
         if rating.recipe_id != recipe_id:
             raise HTTPException(status_code=400, detail="评分与食谱不匹配")
 
-        # 更新评分
-        updated = self.repos.recipe_ratings.update(rating_id, data.model_dump(exclude_unset=True))
-        return self._enrich_rating(updated)
+        raise HTTPException(status_code=400, detail="您已经对该食谱评分过，每个用户只能评分一次")
 
     @router.get("/{recipe_id}/ratings", response_model=list[RecipeRatingOut])
     async def get_recipe_ratings(self, recipe_id: UUID4):

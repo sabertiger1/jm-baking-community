@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import Field, StringConstraints, field_validator
 from pydantic_core.core_schema import ValidationInfo
@@ -21,6 +21,7 @@ class CreateUserRegistration(MealieModel):
 
     seed_data: bool = False
     locale: str = "en-US"
+    invite_role: Literal["student"] | None = None
 
     @field_validator("locale")
     def valid_locale(cls, v):
@@ -41,4 +42,11 @@ class CreateUserRegistration(MealieModel):
         if not bool(value) and not bool(info.data["group"]):
             raise ValueError("group or group_token must be provided")
 
+        return value
+
+    @field_validator("invite_role")
+    @classmethod
+    def invite_role_requires_group_token(cls, value, info: ValidationInfo):
+        if value and not bool(info.data.get("group_token")):
+            raise ValueError("invite_role requires group_token")
         return value

@@ -30,7 +30,7 @@
         :recipe-name="recipe.name!"
       />
       <div v-if="loggedIn">
-        <v-tooltip v-if="canEdit" location="bottom" color="info">
+        <v-tooltip v-if="canEdit && !isStudent" location="bottom" color="info">
           <template #activator="{ props: tooltipProps }">
             <v-btn
               icon
@@ -52,6 +52,7 @@
       </div>
 
       <RecipeContextMenu
+        v-if="!isStudent"
         show-print
         :menu-top="false"
         :name="recipe.name!"
@@ -132,6 +133,8 @@ const deleteDialog = ref(false);
 
 const i18n = useI18n();
 const { $globals } = useNuxtApp();
+const auth = useMealieAuth();
+const isStudent = computed(() => !!auth.user.value && !auth.user.value.admin);
 
 const editorButtons = [
   {

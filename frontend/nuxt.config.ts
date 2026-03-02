@@ -29,11 +29,11 @@ export default defineNuxtConfig({
     baseURL: process.env.SUB_PATH || "/",
 
     head: {
-      title: "Mealie",
+      title: "经贸烘焙社区",
       meta: [
         { property: "og:type", content: "website" },
-        { property: "og:title", content: "Mealie" },
-        { property: "og:site_name", content: "Mealie" },
+        { property: "og:title", content: "经贸烘焙社区" },
+        { property: "og:site_name", content: "经贸烘焙社区" },
         {
           property: "og:description",
           content: "Mealie is a recipe management app for your kitchen.",
@@ -51,8 +51,8 @@ export default defineNuxtConfig({
         },
       ],
       link: [
-        { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
-        { rel: "shortcut icon", type: "image/png", href: "/icons/icon-x64.png" },
+        { rel: "icon", type: "image/x-icon", href: "/LOGO.ico" },
+        { rel: "shortcut icon", type: "image/x-icon", href: "/LOGO.ico" },
         { rel: "apple-touch-icon", type: "image/png", href: "/icons/apple-touch-icon.png" },
         { rel: "mask-icon", href: "/icons/safari-pinned-tab.svg" },
         { rel: "manifest", href: "/manifest.webmanifest", crossorigin: "use-credentials" },
@@ -221,7 +221,9 @@ export default defineNuxtConfig({
       navigateFallback: "/",
       navigateFallbackAllowlist: [/^(?!\/api|\/docs)/],
       globPatterns: ["**/*.{js,css,html,png,svg,ico}"],
-      globIgnores: ["404.html", "200.html"],
+      // Keep the service worker cache manifest small and avoid build failures
+      // when a branding asset is larger than Workbox's default 2 MiB limit.
+      globIgnores: ["404.html", "200.html", "LOGO.png"],
       cleanupOutdatedCaches: true,
       skipWaiting: true,
       clientsClaim: true,
@@ -230,10 +232,10 @@ export default defineNuxtConfig({
       installPrompt: true,
       periodicSyncForUpdates: 120,
     },
-    includeAssets: ["favicon.ico", "apple-touch-icon.png", "safari-pinned-tab.svg"],
+    includeAssets: ["LOGO.ico", "apple-touch-icon.png", "safari-pinned-tab.svg"],
     manifest: {
-      name: "Mealie",
-      short_name: "Mealie",
+      name: "经贸烘焙社区",
+      short_name: "经贸烘焙社区",
       id: "/",
       start_url: "/",
       scope: "/",

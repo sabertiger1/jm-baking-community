@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from pydantic import ConfigDict
+from typing import Literal
 
 from mealie.schema._mealie import MealieModel
 
@@ -29,6 +30,7 @@ class ReadInviteToken(MealieModel):
 class EmailInvitation(MealieModel):
     email: str
     token: str
+    invite_role: Literal["student"] | None = None
 
 
 class EmailInitationResponse(MealieModel):

@@ -4,12 +4,17 @@
       <slot name="header" />
       <h2 class="text-h5">
         <slot name="title">
-          👋 Here's a Title
+          {{ title }}
         </slot>
       </h2>
 
-      <h3 class="subtitle-1">
-        <slot />
+      <h3
+        v-if="$slots.default || subtitle"
+        class="subtitle-1"
+      >
+        <slot>
+          {{ subtitle }}
+        </slot>
       </h3>
     </section>
     <section class="d-flex">
@@ -25,6 +30,14 @@
 <script lang="ts">
 export default defineNuxtComponent({
   props: {
+    title: {
+      type: String,
+      default: "",
+    },
+    subtitle: {
+      type: String,
+      default: "",
+    },
     divider: {
       type: Boolean,
       default: false,

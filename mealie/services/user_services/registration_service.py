@@ -6,6 +6,7 @@ from pydantic import UUID4
 
 from mealie.core.config import get_app_settings
 from mealie.core.security import hash_password
+from mealie.db.models.users.users import UserRole
 from mealie.lang.providers import Translator
 from mealie.repos.all_repositories import get_repositories
 from mealie.repos.repository_factory import AllRepositories
@@ -41,6 +42,7 @@ class RegistrationService:
             can_manage=new_group,
             can_manage_household=new_group,
             can_organize=new_group,
+            role=UserRole.STUDENT if self.registration.invite_role == "student" else None,
         )
 
         # TODO: problem with repository type, not type here

@@ -1,0 +1,54 @@
+services:
+  mealie:
+    container_name: mealie
+    # 使用预构建的镜像（需要先构建并推送到 Docker Hub）
+    # 替换 YOUR_DOCKERHUB_USERNAME 为你的 Docker Hub 用户名
+    image: YOUR_DOCKERHUB_USERNAME/mealie:latest
+    # 或者使用本地构建的镜像
+    # image: mealie:latest
+    restart: always
+    volumes:
+      # 存储路径映射
+      - /vol1/1000/docker/mealie:/app/data
+    ports:
+      # 端口映射：本地端口:容器端口
+      - "9000:9000"
+    environment:
+      # 基础配置
+      PRODUCTION: "true"
+      TESTING: "false"
+      GIT_COMMIT_HASH: ${GIT_COMMIT_HASH:-unknown}
+      NLTK_DATA: "/nltk_data/"
+      APP_PORT: 9000
+      HOST: "0.0.0.0"
+      
+      # 数据库配置 - 使用 SQLite（简单部署）
+      DB_ENGINE: "sqlite"
+      
+      # 用户权限配置
+      PUID: 1000
+      PGID: 1000
+      
+      # 时区配置
+      TZ: "Asia/Shanghai"
+      
+      # 语言配置
+      LANG: "C.UTF-8"
+      
+      # 可选：允许注册（根据需求设置）
+      ALLOW_SIGNUP: "false"
+      
+      # 可选：日志级别
+      LOG_LEVEL: "INFO"
+    healthcheck:
+      test: ["CMD", "python", "-m", "mealie.scripts.healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mealie-network
+
+networks:
+  mealie-network:
+    driver: bridge

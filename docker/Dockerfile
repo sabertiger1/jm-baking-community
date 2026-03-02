@@ -21,8 +21,7 @@ RUN yarn generate
 ###############################################
 # Base Image - Python
 ###############################################
-FROM python:3.12-slim@sha256:2267adc248a477c1f1a852a07a5a224d42abe54c28aafa572efa157dfb001bba \
-    AS python-base
+FROM python:3.12-slim AS python-base
 
 ENV MEALIE_HOME="/app"
 
@@ -119,6 +118,7 @@ ENV GIT_COMMIT_HASH=$COMMIT
 
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
+    bash \
     gosu \
     iproute2 \
     libldap-common \
@@ -133,8 +133,10 @@ COPY --from=venv-builder $VENV_PATH $VENV_PATH
 
 # install nltk data for the ingredient parser
 ENV NLTK_DATA="/nltk_data/"
-RUN mkdir -p $NLTK_DATA
-RUN python -m nltk.downloader -d $NLTK_DATA averaged_perceptron_tagger_eng
+RUN mkdir -p $NLTK_DATA/taggers
+COPY docker/nltk_data/averaged_perceptron_tagger_eng.zip /tmp/averaged_perceptron_tagger_eng.zip
+RUN python -c "import zipfile, pathlib; pathlib.Path('/nltk_data/taggers').mkdir(parents=True, exist_ok=True); zipfile.ZipFile('/tmp/averaged_perceptron_tagger_eng.zip').extractall('/nltk_data/taggers')" \
+    && rm -f /tmp/averaged_perceptron_tagger_eng.zip
 
 VOLUME [ "$MEALIE_HOME/data/" ]
 ENV APP_PORT=9000
@@ -148,5 +150,6 @@ ENV HOST 0.0.0.0
 EXPOSE ${APP_PORT}
 COPY ./docker/entry.sh $MEALIE_HOME/run.sh
 
-RUN chmod +x $MEALIE_HOME/run.sh
-ENTRYPOINT ["/app/run.sh"]
+RUN sed -i 's/\r$//' $MEALIE_HOME/run.sh \
+    && chmod +x $MEALIE_HOME/run.sh
+ENTRYPOINT ["/bin/bash", "/app/run.sh"]

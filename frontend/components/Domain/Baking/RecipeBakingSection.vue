@@ -29,109 +29,6 @@
       </v-card-text>
     </v-card>
 
-    <!-- 评分和评论 -->
-    <v-card class="mb-4">
-      <v-card-title>{{ $t("baking.ratings-and-comments") }}</v-card-title>
-      <v-card-text>
-        <!-- 评分统计 -->
-        <div v-if="ratingSummary" class="mb-4">
-          <div class="d-flex align-center mb-2">
-            <v-rating
-              :model-value="ratingSummary.averageRating || 0"
-              readonly
-              half-increments
-              color="primary"
-              size="large"
-            />
-            <span class="ml-2 text-h6">
-              {{ ratingSummary.averageRating?.toFixed(1) || $t("baking.no-rating") }}
-            </span>
-            <span class="ml-2 text-body-2 text-medium-emphasis">
-              ({{ $t("baking.ratings-count", { count: ratingSummary.totalRatings }) }})
-            </span>
-          </div>
-        </div>
-
-        <!-- 我的评分 -->
-        <div v-if="profileComplete" class="mb-4">
-          <v-btn
-            v-if="!myRating"
-            color="primary"
-            prepend-icon="$globals.icons.star"
-            @click="showRatingDialog = true"
-          >
-            {{ $t("baking.rate-now") }}
-          </v-btn>
-          <div v-else>
-            <v-card variant="outlined" color="primary">
-              <v-card-text>
-                <div class="d-flex align-center justify-space-between">
-                  <div>
-                    <div class="text-subtitle-2 mb-1">{{ $t("baking.my-rating") }}</div>
-                    <v-rating
-                      :model-value="myRating.rating"
-                      readonly
-                      size="small"
-                      color="primary"
-                    />
-                    <div v-if="myRating.comment" class="text-body-2 mt-2">
-                      {{ myRating.comment }}
-                    </div>
-                  </div>
-                  <v-btn
-                    color="primary"
-                    variant="text"
-                    prepend-icon="$globals.icons.edit"
-                    @click="editMyRating"
-                  >
-                    {{ $t("baking.edit") }}
-                  </v-btn>
-                </div>
-              </v-card-text>
-            </v-card>
-          </div>
-        </div>
-
-        <!-- 评论列表 -->
-        <div v-if="ratings.length > 0">
-          <v-list>
-            <v-list-item
-              v-for="rating in ratings"
-              :key="rating.id"
-              class="mb-2"
-            >
-              <template #prepend>
-                <v-avatar size="40">
-                  <img v-if="rating.avatarUrl" :src="rating.avatarUrl" />
-                  <v-icon v-else>$globals.icons.account</v-icon>
-                </v-avatar>
-              </template>
-              <v-list-item-title>
-                {{ rating.userFullName || rating.userName }}
-              </v-list-item-title>
-              <v-list-item-subtitle>
-                <div class="d-flex align-center">
-                  <v-rating
-                    :model-value="rating.rating"
-                    readonly
-                    size="small"
-                    color="primary"
-                  />
-                  <span class="ml-2">{{ formatDate(rating.createdAt) }}</span>
-                  <span v-if="rating.className" class="ml-2 text-caption">
-                    {{ rating.grade }} {{ rating.className }}
-                  </span>
-                </div>
-              </v-list-item-subtitle>
-              <v-list-item-text v-if="rating.comment">
-                {{ rating.comment }}
-              </v-list-item-text>
-            </v-list-item>
-          </v-list>
-        </div>
-      </v-card-text>
-    </v-card>
-
     <!-- 作品集入口 -->
     <v-card>
       <v-card-title>
@@ -151,7 +48,7 @@
           color="success"
           class="mr-2"
         >
-          <v-icon start>$globals.icons.check</v-icon>
+          <v-icon start :icon="$globals.icons.check" />
           {{ $t("baking.work-submitted") }}
         </v-chip>
         <v-btn
@@ -194,35 +91,6 @@
       :recipe-id="recipe.id"
       @submitted="loadRecentWorks"
     />
-
-    <!-- 评分对话框 -->
-    <v-dialog v-model="showRatingDialog" max-width="600">
-      <v-card>
-        <v-card-title>{{ $t("baking.ratings-and-comments") }}</v-card-title>
-        <v-card-text>
-          <v-form @submit.prevent="submitRating">
-            <v-rating
-              v-model="ratingForm.rating"
-              color="primary"
-              size="large"
-              class="mb-4"
-            />
-            <v-textarea
-              v-model="ratingForm.comment"
-              :label="$t('baking.comment-optional')"
-              rows="4"
-            />
-            <v-card-actions>
-              <v-spacer />
-              <v-btn @click="showRatingDialog = false">{{ $t("baking.cancel") }}</v-btn>
-              <v-btn type="submit" color="primary" :loading="submitting">
-                {{ $t("baking.submit") }}
-              </v-btn>
-            </v-card-actions>
-          </v-form>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
   </div>
 </template>
 
@@ -230,7 +98,6 @@
 import { useUserApi } from "~/composables/api/api-client";
 import { useMealieAuth } from "~/composables/use-mealie-auth";
 import type { Recipe } from "~/lib/api/types/recipe";
-import type { RecipeRating, RecipeRatingSummary } from "~/lib/api/user/baking";
 import BakingWorkCard from "./BakingWorkCard.vue";
 import BakingWorkSubmitDialog from "./BakingWorkSubmitDialog.vue";
 
@@ -242,9 +109,6 @@ const api = useUserApi();
 const auth = useMealieAuth();
 const { t: $t } = useI18n();
 
-const ratings = ref<RecipeRating[]>([]);
-const myRating = ref<RecipeRating | null>(null);
-const ratingSummary = ref<RecipeRatingSummary | null>(null);
 const recentWorks = ref<any[]>([]);
 const myWork = ref<any>(null); // 我的作品
 const profileComplete = ref(true);
@@ -252,8 +116,8 @@ const profileComplete = ref(true);
 // 检查资料完整性
 async function checkProfileComplete() {
   try {
-    const check = await api.users.getUserDetailsCheck();
-    profileComplete.value = check.is_complete;
+    const { data: check } = await api.users.getUserDetailsCheck();
+    profileComplete.value = !!check?.isComplete;
   } catch (error) {
     console.error($t("baking.profile-incomplete-message"), error);
     profileComplete.value = false;
@@ -262,21 +126,6 @@ async function checkProfileComplete() {
 
 const showRatingDialog = ref(false);
 const showSubmitDialog = ref(false);
-const submitting = ref(false);
-const ratingForm = reactive({
-  rating: 5,
-  comment: "",
-});
-
-async function loadRatings() {
-  try {
-    ratings.value = await api.baking.getRecipeRatings(props.recipe.id);
-    myRating.value = await api.baking.getMyRating(props.recipe.id);
-    ratingSummary.value = await api.baking.getRatingSummary(props.recipe.id);
-  } catch (error) {
-    console.error($t("baking.loading-ratings-failed"), error);
-  }
-}
 
 async function loadRecentWorks() {
   try {
@@ -298,49 +147,26 @@ async function loadRecentWorks() {
   }
 }
 
-async function submitRating() {
-  submitting.value = true;
-  try {
-    if (myRating.value) {
-      // 更新现有评分
-      await api.baking.updateRating(props.recipe.id, myRating.value.id, {
-        rating: ratingForm.rating,
-        comment: ratingForm.comment || undefined,
-      });
-    } else {
-      // 创建新评分
-      await api.baking.createRating(props.recipe.id, {
-        recipeId: props.recipe.id,
-        rating: ratingForm.rating,
-        comment: ratingForm.comment || undefined,
-      });
-    }
-    showRatingDialog.value = false;
-    ratingForm.rating = 5;
-    ratingForm.comment = "";
-    await loadRatings();
-  } catch (error) {
-    console.error($t("baking.rating-submit-failed"), error);
-  } finally {
-    submitting.value = false;
-  }
-}
-
-function editMyRating() {
-  if (myRating.value) {
-    ratingForm.rating = myRating.value.rating;
-    ratingForm.comment = myRating.value.comment || "";
-    showRatingDialog.value = true;
-  }
-}
-
-function formatDate(date: string): string {
-  return new Date(date).toLocaleDateString("zh-CN");
-}
-
 onMounted(() => {
   checkProfileComplete();
-  loadRatings();
   loadRecentWorks();
+
+  if (process.client) {
+    window.addEventListener("baking-work-submitted", handleWorkSubmitted as EventListener);
+  }
 });
+
+onBeforeUnmount(() => {
+  if (process.client) {
+    window.removeEventListener("baking-work-submitted", handleWorkSubmitted as EventListener);
+  }
+});
+
+function handleWorkSubmitted(event: Event) {
+  const customEvent = event as CustomEvent<{ recipeId?: string }>;
+  if (customEvent.detail?.recipeId !== props.recipe.id) {
+    return;
+  }
+  loadRecentWorks();
+}
 </script>

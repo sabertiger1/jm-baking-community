@@ -4,7 +4,7 @@
       <v-card-title>
         <span>提交作品</span>
         <v-spacer />
-        <v-btn icon="mdi-close" variant="text" @click="close" />
+        <v-btn :icon="$globals.icons.close" variant="text" @click="close" />
       </v-card-title>
       <v-card-text>
         <v-form ref="formRef" @submit.prevent="submit">
@@ -12,7 +12,7 @@
             v-model="imageFile"
             label="上传成品图片"
             accept="image/*"
-            prepend-icon="mdi-image"
+            :prepend-icon="$globals.icons.fileImage"
             :rules="[rules.required, rules.image]"
             @change="handleImageChange"
           />
@@ -157,15 +157,29 @@ async function submit() {
     error.value = null;
     
     emit("submitted");
+    if (process.client) {
+      window.dispatchEvent(new CustomEvent("baking-work-submitted", {
+        detail: { recipeId: props.recipeId },
+      }));
+    }
     close();
   } catch (err: any) {
     console.error("提交作品失败:", err);
-    const errorMessage = err.response?.data?.detail || err.message || "提交失败，请重试";
+    const detail = err?.response?.data?.detail;
+    const errorMessage = detail || err.message || "提交失败，请重试";
     error.value = errorMessage;
     
     // 如果是重复提交的错误，显示特殊提示
     if (errorMessage.includes("已经对该配方提交过作品") || errorMessage.includes("只能提交一次")) {
       error.value = "您已经对该配方提交过作品，每个配方只能提交一次";
+    } else if (err?.response?.status === 403) {
+      if (typeof detail === "string") {
+        error.value = detail;
+      } else if (detail && typeof detail === "object" && detail.message) {
+        error.value = detail.message;
+      } else {
+        error.value = "请先完善个人资料（真实姓名、年级、班级、头像）后再提交作品";
+      }
     }
   } finally {
     submitting.value = false;

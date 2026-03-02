@@ -29,6 +29,14 @@
           :label="$t('household.user-household')"
           :rules="[validators.required]"
         />
+        <v-select
+          v-model="inviteRole"
+          :items="inviteRoleOptions"
+          item-title="label"
+          item-value="value"
+          variant="filled"
+          label="注册链接类型"
+        />
         <v-row>
           <v-col cols="9">
             <v-text-field
@@ -47,7 +55,7 @@
               :icon="false"
               color="info"
               :copy-text="generatedSignupLink"
-              :disabled="generatedSignupLink"
+              :disabled="!generatedSignupLink"
             />
           </v-col>
         </v-row>
@@ -110,6 +118,11 @@ export default defineNuxtComponent({
     const selectedHousehold = ref<string | null>(null);
     const groups = ref<GroupInDB[]>([]);
     const households = ref<HouseholdInDB[]>([]);
+    const inviteRole = ref<"normal" | "student">("student");
+    const inviteRoleOptions = [
+      { label: "学生专用邀请链接", value: "student" },
+      { label: "普通邀请链接", value: "normal" },
+    ];
     const api = useUserApi();
 
     const fetchGroupsAndHouseholds = () => {
@@ -145,12 +158,14 @@ export default defineNuxtComponent({
       return households.value?.filter(household => household.groupId === selectedGroup.value);
     });
 
-    function constructLink(token: string) {
-      return token ? `${window.location.origin}/register?token=${token}` : "";
+    function constructLink(token: string, role: "normal" | "student") {
+      if (!token) return "";
+      const inviteRoleQuery = role === "student" ? "&inviteRole=student" : "";
+      return `${window.location.origin}/register?token=${token}${inviteRoleQuery}`;
     }
 
     const generatedSignupLink = computed(() => {
-      return constructLink(token.value);
+      return constructLink(token.value, inviteRole.value);
     });
 
     // =================================================
@@ -163,11 +178,12 @@ export default defineNuxtComponent({
     async function sendInvite() {
       state.loading = true;
       if (!token.value) {
-        getSignupLink(selectedGroup.value, selectedHousehold.value);
+        await getSignupLink(selectedGroup.value, selectedHousehold.value);
       }
       const { data } = await api.email.sendInvitation({
         email: state.sendTo,
         token: token.value,
+        inviteRole: inviteRole.value === "student" ? "student" : null,
       });
 
       if (data && data.success) {
@@ -203,6 +219,8 @@ export default defineNuxtComponent({
       selectedGroup,
       selectedHousehold,
       filteredHouseholds,
+      inviteRole,
+      inviteRoleOptions,
       groups,
       households,
       fetchGroupsAndHouseholds,

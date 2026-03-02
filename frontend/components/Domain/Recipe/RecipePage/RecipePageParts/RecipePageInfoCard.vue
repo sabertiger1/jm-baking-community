@@ -15,12 +15,19 @@
             <v-card-title class="text-h5 font-weight-regular pa-0 text-wrap text-center opacity-80">
               {{ recipe.name }}
             </v-card-title>
-            <RecipeRating
-              :key="recipe.slug"
-              :value="recipe.rating"
-              :recipe-id="recipe.id"
-              :slug="recipe.slug"
-            />
+            <div class="d-flex align-center mt-2" style="gap: 8px;">
+              <span class="text-caption text-medium-emphasis">平均评分</span>
+              <v-rating
+                :model-value="recipe.rating || 0"
+                readonly
+                half-increments
+                size="small"
+                color="primary"
+              />
+              <span class="text-caption text-medium-emphasis">
+                {{ typeof recipe.rating === "number" && recipe.rating > 0 ? recipe.rating.toFixed(1) : "暂无评分" }}
+              </span>
+            </div>
           </div>
           <v-divider class="my-2" />
           <SafeMarkdown :source="recipe.description" class="my-3" />
@@ -78,7 +85,6 @@
 
 <script setup lang="ts">
 import { useLoggedInState } from "~/composables/use-logged-in-state";
-import RecipeRating from "~/components/Domain/Recipe/RecipeRating.vue";
 import RecipeLastMade from "~/components/Domain/Recipe/RecipeLastMade.vue";
 import RecipeTimeCard from "~/components/Domain/Recipe/RecipeTimeCard.vue";
 import RecipeYield from "~/components/Domain/Recipe/RecipeYield.vue";

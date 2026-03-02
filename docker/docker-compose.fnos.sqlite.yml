@@ -1,0 +1,60 @@
+services:
+  mealie:
+    container_name: mealie
+    image: mealie:latest
+    build:
+      context: ../
+      target: production
+      dockerfile: ./docker/Dockerfile.fnos
+      args:
+        COMMIT: ${GIT_COMMIT_HASH:-unknown}
+    restart: always
+    volumes:
+      # 存储路径映射
+      - /vol1/1000/docker/mealie:/app/data
+    ports:
+      # 端口映射：本地端口:容器端口
+      - "9000:9000"
+    environment:
+      # 基础配置
+      PRODUCTION: "true"
+      TESTING: "false"
+      GIT_COMMIT_HASH: ${GIT_COMMIT_HASH:-unknown}
+      NLTK_DATA: "/nltk_data/"
+      APP_PORT: 9000
+      HOST: "0.0.0.0"
+      
+      # 数据库配置 - 使用 SQLite（简单部署）
+      DB_ENGINE: "sqlite"
+      
+      # 用户权限配置
+      PUID: 1000
+      PGID: 1000
+      
+      # 时区配置
+      TZ: "Asia/Shanghai"
+      
+      # 语言配置
+      LANG: "C.UTF-8"
+      
+      # 可选：允许注册（根据需求设置）
+      ALLOW_SIGNUP: "false"
+      
+      # 可选：日志级别
+      LOG_LEVEL: "INFO"
+    healthcheck:
+      test: ["CMD", "python", "-m", "mealie.scripts.healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - mealie-network
+
+volumes:
+  mealie-data:
+    driver: local
+
+networks:
+  mealie-network:
+    driver: bridge

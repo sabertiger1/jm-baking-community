@@ -46,6 +46,7 @@ const routes = {
 
   recipesRecipeSlug: (recipe_slug: string) => `${prefix}/recipes/${recipe_slug}`,
   recipesRecipeSlugImage: (recipe_slug: string) => `${prefix}/recipes/${recipe_slug}/image`,
+  recipesRecipeSlugVideo: (recipe_slug: string) => `${prefix}/recipes/${recipe_slug}/video`,
   recipesRecipeSlugAssets: (recipe_slug: string) => `${prefix}/recipes/${recipe_slug}/assets`,
 
   recipesSlugComments: (slug: string) => `${prefix}/recipes/${slug}/comments`,
@@ -132,6 +133,15 @@ export class RecipeAPI extends BaseCRUDAPI<CreateRecipe, Recipe, Recipe> {
     formData.append("extension", fileObject.name.split(".").pop() ?? "");
 
     return this.requests.put<UpdateImageResponse, FormData>(routes.recipesRecipeSlugImage(slug), formData);
+  }
+
+  updateVideo(slug: string, fileObject: File, videoType: "making" | "key-points") {
+    const formData = new FormData();
+    formData.append("video", fileObject);
+    formData.append("extension", fileObject.name.split(".").pop() ?? "");
+    formData.append("videoType", videoType);
+
+    return this.requests.put<{ videoUrl: string }, FormData>(routes.recipesRecipeSlugVideo(slug), formData);
   }
 
   updateImagebyURL(slug: string, url: string) {

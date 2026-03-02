@@ -1,7 +1,8 @@
 """作品投票路由（送花/送鸡蛋）"""
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Query, status
 from pydantic import UUID4
 from sqlalchemy import and_
+from sqlalchemy.orm import joinedload
 
 from mealie.core.dependencies.dependencies import require_complete_profile
 from mealie.db.models.baking.baking_records import UserBakingRecord
@@ -9,7 +10,7 @@ from mealie.db.models.baking.points import UserPoints
 from mealie.db.models.baking.votes import VoteType, WorkVote
 from mealie.routes._base import BaseUserController, controller
 from mealie.routes._base.routers import UserAPIRouter
-from mealie.schema.baking.votes import VoteRequest, VoteResponse
+from mealie.schema.baking.votes import ReceivedVoteRecord, ReceivedVoteRecords, VoteRequest, VoteResponse
 
 router = UserAPIRouter()
 
@@ -18,7 +19,43 @@ VOTE_COST = 5  # 投票消耗的积分
 
 @controller(router)
 class VotesController(BaseUserController):
-    @router.post("", response_model=VoteResponse, dependencies=[Depends(require_complete_profile)])
+    @router.get("/received", response_model=ReceivedVoteRecords)
+    async def get_received_votes(
+        self,
+        vote_type: VoteType | None = Query(None, description="过滤投票类型 flower/egg"),
+        limit: int = Query(100, ge=1, le=500),
+    ):
+        """获取当前用户收到的鲜花/鸡蛋记录（谁在什么时间送的）"""
+        query = (
+            self.session.query(WorkVote)
+            .join(UserBakingRecord, WorkVote.work_id == UserBakingRecord.id)
+            .filter(UserBakingRecord.user_id == self.user.id)
+            .options(
+                joinedload(WorkVote.user),
+                joinedload(WorkVote.work).joinedload(UserBakingRecord.recipe),
+            )
+            .order_by(WorkVote.created_at.desc())
+        )
+        if vote_type is not None:
+            query = query.filter(WorkVote.vote_type == vote_type)
+
+        votes = query.limit(limit).all()
+        items = [
+            ReceivedVoteRecord(
+                vote_id=vote.id,
+                work_id=vote.work_id,
+                recipe_id=vote.work.recipe_id,
+                recipe_name=vote.work.recipe.name if vote.work and vote.work.recipe else None,
+                vote_type=VoteType(vote.vote_type.value) if hasattr(vote.vote_type, "value") else vote.vote_type,
+                voter_user_id=vote.user_id,
+                voter_name=(vote.user.full_name or vote.user.username) if vote.user else None,
+                created_at=vote.created_at,
+            )
+            for vote in votes
+        ]
+        return ReceivedVoteRecords(items=items)
+
+    @router.post("/", response_model=VoteResponse, dependencies=[Depends(require_complete_profile)])
     async def vote(self, data: VoteRequest):
         """给作品送花或送鸡蛋（需要完善资料）"""
         # 1. 验证作品存在

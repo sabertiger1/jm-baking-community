@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from pydantic import UUID4
 
+from mealie.db.models.baking.baking_records import UserBakingRecord
 from mealie.repos.all_repositories import get_repositories
 from mealie.routes._base import BaseUserController, controller
 from mealie.routes._base.routers import UserAPIRouter
@@ -51,12 +52,29 @@ class UserRatingsController(BaseUserController):
         """Get user's favorited recipes"""
         return UserRatings(ratings=self.repos.user_ratings.get_by_user(id, favorites_only=True))
 
+    @router.get("/recipe/{slug}/ratings", response_model=UserRatings[UserRatingOut])
+    async def get_recipe_ratings(self, slug: str):
+        """Get all user ratings for a recipe in current group"""
+        recipe = self.get_recipe_or_404(slug)
+        return UserRatings(ratings=self.repos.user_ratings.get_by_recipe(recipe.id))
+
     @router.post("/{id}/ratings/{slug}")
     def set_rating(self, id: UUID4, slug: str, data: UserRatingUpdate):
         """Sets the user's rating for a recipe"""
         assert_user_change_allowed(id, self.user, self.user)
 
         recipe = self.get_recipe_or_404(slug)
+        made_record = (
+            self.session.query(UserBakingRecord)
+            .filter(UserBakingRecord.recipe_id == recipe.id, UserBakingRecord.user_id == id)
+            .first()
+        )
+        if not made_record:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                detail=ErrorResponse.respond(message="请先提交该配方作品后再进行评分"),
+            )
+
         user_rating = self.repos.user_ratings.get_by_user_and_recipe(id, recipe.id)
         if not user_rating:
             self.repos.user_ratings.create(
@@ -68,6 +86,11 @@ class UserRatingsController(BaseUserController):
                 )
             )
         else:
+            if data.rating is not None and user_rating.rating is not None and data.rating != user_rating.rating:
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST,
+                    detail=ErrorResponse.respond(message="您已经对该配方评分过，每个用户只能评分一次"),
+                )
             if data.rating is not None:
                 user_rating.rating = data.rating
             if data.is_favorite is not None:

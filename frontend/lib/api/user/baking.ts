@@ -57,7 +57,6 @@ export interface RecipeRating {
 }
 
 export interface RecipeRatingCreate {
-  recipeId: string;
   rating: number;
   comment?: string;
 }
@@ -111,6 +110,21 @@ export interface VoteResponse {
   message?: string;
 }
 
+export interface ReceivedVoteRecord {
+  voteId: string;
+  workId: string;
+  recipeId: string;
+  recipeName?: string;
+  voteType: "flower" | "egg";
+  voterUserId: string;
+  voterName?: string;
+  createdAt: string;
+}
+
+export interface ReceivedVoteRecords {
+  items: ReceivedVoteRecord[];
+}
+
 export interface UserClass {
   id: string;
   userId: string;
@@ -132,8 +146,10 @@ export interface UserClassUpdate {
 }
 
 const routes = {
-  bakingRecords: `${prefix}/baking`,
+  bakingRecords: `${prefix}/baking/`,
   bakingRecord: (id: string) => `${prefix}/baking/${id}`,
+  bakingGrades: `${prefix}/baking/grades`,
+  bakingClasses: `${prefix}/baking/classes`,
   recipeRatings: (recipeId: string) => `${prefix}/recipes/${recipeId}/ratings`,
   recipeRating: (recipeId: string, ratingId: string) => `${prefix}/recipes/${recipeId}/ratings/${ratingId}`,
   recipeRatingSummary: (recipeId: string) => `${prefix}/recipes/${recipeId}/ratings/summary`,
@@ -141,7 +157,8 @@ const routes = {
   pointsMe: `${prefix}/points/me`,
   pointsCheckin: `${prefix}/points/checkin`,
   pointsLeaderboard: `${prefix}/points/leaderboard`,
-  votes: `${prefix}/votes`,
+  votes: `${prefix}/votes/`,
+  votesReceived: `${prefix}/votes/received`,
   voteCancel: (workId: string, voteType: string) => `${prefix}/votes/${workId}/${voteType}`,
   classesMe: `${prefix}/classes/me`,
   classesList: `${prefix}/classes/list`,
@@ -154,14 +171,27 @@ export class BakingApi {
   // 作品集相关
   async getBakingRecords(params?: {
     recipeId?: string;
+    userId?: string;
+    grade?: string;
     className?: string;
-    groupName?: string;
     sortBy?: string;
     order?: string;
     page?: number;
     perPage?: number;
   }): Promise<BakingRecordPagination> {
-    const { data } = await this.request.get<BakingRecordPagination>(route(routes.bakingRecords, params || {}));
+    const query = params
+      ? {
+          ...(params.recipeId ? { recipe_id: params.recipeId } : {}),
+          ...(params.userId ? { user_id: params.userId } : {}),
+          ...(params.grade ? { grade: params.grade } : {}),
+          ...(params.className ? { class_name: params.className } : {}),
+          ...(params.sortBy ? { sort_by: params.sortBy } : {}),
+          ...(params.order ? { order: params.order } : {}),
+          ...(params.page ? { page: params.page } : {}),
+          ...(params.perPage ? { per_page: params.perPage } : {}),
+        }
+      : {};
+    const { data } = await this.request.get<BakingRecordPagination>(route(routes.bakingRecords, query));
     return data;
   }
 
@@ -171,12 +201,19 @@ export class BakingApi {
   }
 
   async createBakingRecord(record: BakingRecordCreate): Promise<BakingRecord> {
-    const { data } = await this.request.post<BakingRecord>(routes.bakingRecords, record);
+    const { data } = await this.request.post<BakingRecord>(routes.bakingRecords, {
+      recipe_id: record.recipeId,
+      image_url: record.imageUrl,
+      notes: record.notes,
+    });
     return data;
   }
 
   async updateBakingRecord(id: string, record: BakingRecordUpdate): Promise<BakingRecord> {
-    const { data } = await this.request.put<BakingRecord>(routes.bakingRecord(id), record);
+    const { data } = await this.request.put<BakingRecord>(routes.bakingRecord(id), {
+      image_url: record.imageUrl,
+      notes: record.notes,
+    });
     return data;
   }
 
@@ -192,12 +229,19 @@ export class BakingApi {
   }
 
   async createRating(recipeId: string, rating: RecipeRatingCreate): Promise<RecipeRating> {
-    const { data } = await this.request.post<RecipeRating>(routes.recipeRatings(recipeId), rating);
+    const { data } = await this.request.post<RecipeRating>(routes.recipeRatings(recipeId), {
+      recipe_id: recipeId,
+      rating: rating.rating,
+      comment: rating.comment,
+    });
     return data;
   }
 
   async updateRating(recipeId: string, ratingId: string, rating: RecipeRatingUpdate): Promise<RecipeRating> {
-    const { data } = await this.request.put<RecipeRating>(routes.recipeRating(recipeId, ratingId), rating);
+    const { data } = await this.request.put<RecipeRating>(routes.recipeRating(recipeId, ratingId), {
+      rating: rating.rating,
+      comment: rating.comment,
+    });
     return data;
   }
 
@@ -224,12 +268,24 @@ export class BakingApi {
 
   // 投票相关
   async vote(vote: VoteRequest): Promise<VoteResponse> {
-    const { data } = await this.request.post<VoteResponse>(routes.votes, vote);
+    const { data } = await this.request.post<VoteResponse>(routes.votes, {
+      work_id: vote.workId,
+      vote_type: vote.voteType,
+    });
     return data;
   }
 
   async cancelVote(workId: string, voteType: string): Promise<VoteResponse> {
     const { data } = await this.request.delete<VoteResponse>(routes.voteCancel(workId, voteType));
+    return data;
+  }
+
+  async getReceivedVotes(params?: { voteType?: "flower" | "egg"; limit?: number }): Promise<ReceivedVoteRecords> {
+    const query = {
+      vote_type: params?.voteType,
+      limit: params?.limit,
+    };
+    const { data } = await this.request.get<ReceivedVoteRecords>(route(routes.votesReceived, query));
     return data;
   }
 
@@ -240,7 +296,10 @@ export class BakingApi {
   }
 
   async updateMyClass(update: UserClassUpdate): Promise<UserClass> {
-    const { data } = await this.request.put<UserClass>(routes.classesMe, update);
+    const { data } = await this.request.put<UserClass>(routes.classesMe, {
+      class_name: update.className,
+      group_name: update.groupName,
+    });
     return data;
   }
 
@@ -249,8 +308,22 @@ export class BakingApi {
     return data;
   }
 
+  async getBakingGradeList(): Promise<string[]> {
+    const { data } = await this.request.get<string[]>(routes.bakingGrades);
+    return data;
+  }
+
+  async getBakingClassList(grade?: string): Promise<string[]> {
+    const { data } = await this.request.get<string[]>(
+      route(routes.bakingClasses, grade ? { grade } : {}),
+    );
+    return data;
+  }
+
   async getGroupList(className?: string): Promise<string[]> {
-    const { data } = await this.request.get<string[]>(route(routes.classesGroups, className ? { className } : {}));
+    const { data } = await this.request.get<string[]>(
+      route(routes.classesGroups, className ? { class_name: className } : {}),
+    );
     return data;
   }
 }

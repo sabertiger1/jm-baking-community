@@ -242,6 +242,7 @@ class User(SqlAlchemyBase, BaseMixins):
         """
         self.admin = admin
         if self.admin:
+            self.role = UserRole.ADMIN
             self.can_manage_household = True
             self.can_manage = True
             self.can_invite = True
